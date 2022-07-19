@@ -18,6 +18,9 @@ from ask_user_preferences_backend import _ask_num_articles, _ask_frequency
 from telegram.ext import ConversationHandler
 
 
+# Gets which group is entered
+
+
 # Asks users for which news sources they want
 def get_news_sources(update_obj: Update, context: CallbackContext) -> int:
     chat_id = update_obj.message.chat_id

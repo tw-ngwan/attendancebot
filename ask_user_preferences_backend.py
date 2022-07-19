@@ -5,6 +5,10 @@ from telegram import Update
 from telegram.ext import CallbackContext
 
 
+def _start_broadcasting_attendance():
+    pass
+
+
 # Asks for user's news sources preferences
 def _ask_news_sources(update_obj: Update, context: CallbackContext) -> None:
     # Gets the news sources that user wants to get news from
