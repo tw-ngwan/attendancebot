@@ -19,9 +19,9 @@ Need to generate the attendance, and store the attendance status of people.
 SQL admin:
 Need to create 3 tables
 Table 1: groups
-id, parent_id, Name, Date Added, Group Code, Password, Member Password, Admin Password
+id, parent_id, Name, Date Added, Group Code, Observer Password, Member Password, Admin Password
 Table 2: users
-id, group_id, Name, ORD Date (?), Date Added, chat_id (if relevant), role, is_admin
+id, group_id, Name, Date Added, chat_id (if relevant), role -> (Observer, Member, or Admin)
 Table 3: attendance
 id, time period (morning, afternoon), datetime, user_id, status
 
