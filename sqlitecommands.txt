@@ -1,33 +1,54 @@
+// Table creation 
 CREATE TABLE groups (
-id               INTEGER UNIQUE NOT NULL, 
-parent_id        INTEGER NOT NULL, 
+id               INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL, 
+parent_id        INTEGER         , 
+Name                TEXT NOT NULL, 
+DateAdded           TEXT NOT NULL, 
+GroupCode           TEXT UNIQUE NOT NULL, 
+ObserverPassword    TEXT NOT NULL, 
+MemberPassword      TEXT NOT NULL, 
+AdminPassword       TEXT NOT NULL,  
+FOREIGN KEY(parent_id) REFERENCES groups(id)
+);
+
+CREATE TABLE users (
+id       INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL, 
+group_id INTEGER NOT NULL, 
+Name        TEXT NOT NULL, 
+DateAdded   TEXT NOT NULL, 
+chat_id     TEXT NOT NULL, 
+role        TEXT NOT NULL, 
+FOREIGN KEY(group_id) REFERENCES groups(id)
+);
+
+CREATE TABLE attendance (
+id            INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL, 
+user_id       INTEGER NOT NULL, 
+TimePeriod    INTEGER NOT NULL, 
+Date             TEXT NOT NULL, 
+AttendanceStatus TEXT NOT NULL, 
+FOREIGN KEY(user_id) REFERENCES users(id)
+); 
+
+
+
+// Inserting new group 
+INSERT INTO groups (
+id, parent_id, Name, DateAdded, GroupCode, 
+ObserverPassword, MemberPassword, AdminPassword
+) 
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+
+INSERT INTO groups (
+id, Name, DateAdded, GroupCode, 
+ObserverPassword, MemberPassword, AdminPassword
+)
+VALUES (?, ?, ?, ?, ?, ?, ?)
+
+
 Name                TEXT NOT NULL, 
 DateAdded           TEXT NOT NULL, 
 GroupCode           TEXT NOT NULL, 
 ObserverPassword    TEXT NOT NULL, 
 MemberPassword      TEXT NOT NULL, 
 AdminPassword       TEXT NOT NULL, 
-PRIMARY KEY(id), 
-FOREIGN KEY(parent_id) REFERENCES groups(id)
-);
-
-CREATE TABLE users (
-id       INTEGER UNIQUE NOT NULL, 
-group_id INTEGER NOT NULL, 
-Name        TEXT NOT NULL, 
-DateAdded   TEXT NOT NULL, 
-chat_id     TEXT NOT NULL, 
-role        TEXT NOT NULL, 
-PRIMARY KEY(id), 
-FOREIGN KEY(group_id) REFERENCES groups(id)
-);
-
-CREATE TABLE attendance (
-id            INTEGER UNIQUE NOT NULL, 
-user_id       INTEGER NOT NULL, 
-TimePeriod    INTEGER NOT NULL, 
-Date             TEXT NOT NULL, 
-AttendanceStatus TEXT NOT NULL, 
-PRIMARY KEY(id), 
-FOREIGN KEY(user_id) REFERENCES users(id)
-); 

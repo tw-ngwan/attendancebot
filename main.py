@@ -78,8 +78,10 @@ commands = ['start', 'help',
             'getallattendance', 'backdatechangeattendance'
             'stop']
 
-implemented_commands = ['start', 'help',
-                        'creategroup', 'entergroup', 'currentgroup']
+implemented_commands = ['entergroup', 'currentgroup']
+
+fully_implemented_commands = ['start', 'help',
+                              'creategroup']
 
 help_message = """
 Here is a walkthrough of what each of the functions will do: 
@@ -131,6 +133,8 @@ Functions to finish first:
 """
 
 "Schedule message: https://stackoverflow.com/questions/48288124/how-to-send-message-in-specific-time-telegrambot"
+"If you need to remake a table: "
+"https://stackoverflow.com/questions/631060/can-i-alter-a-column-in-an-sqlite-table-to-autoincrement-after-creation"
 
 
 # Main function

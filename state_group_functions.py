@@ -8,14 +8,60 @@ from telegram.ext import CallbackContext
 from telegram.ext import ConversationHandler
 import settings
 from keyboards import groups_button_markup
+from backend_implementations import generate_random_password
+import sqlite3
 
 
 # Gets new group title
-def name_group_title(update_obj: Update, context: CallbackContext) -> int:
+def name_group_title(update_obj: Update, context: CallbackContext) -> ConversationHandler.END:
     chat_id, title = _get_user_reply(update_obj, context)
     # Do something to store the title in SQLite
+    with sqlite3.connect('attendance.db') as con:
+        cur = con.cursor()
+        current_group = settings.current_group
+        group_code = generate_random_password(password=False)[0]
+        observer_password, member_password, admin_password = generate_random_password(iterations=3)
+        if current_group is None:
+            cur.execute(
+                """
+                INSERT INTO groups (
+                Name, DateAdded, GroupCode, 
+                ObserverPassword, MemberPassword, AdminPassword
+                )
+                VALUES (?, datetime('now'), ?, ?, ?, ?)
+                """,
+                (title, group_code, observer_password, member_password, admin_password)
+            )
+        else:
+            cur.execute(
+                """
+                INSERT INTO groups (
+                parent_id, Name, DateAdded, GroupCode, 
+                ObserverPassword, MemberPassword, AdminPassword
+                )
+                VALUES (?, ?, datetime('now'), ?, ?, ?, ?)
+                """,
+                (current_group, title, group_code, observer_password, member_password, admin_password)
+            )
+        # Enter the group
+        cur.execute("""SELECT id FROM groups WHERE GroupCode = ?""", (group_code,))
+        group_to_enter = cur.fetchall()[0]
+        con.commit()
     update_obj.message.reply_text(f"Ok, your group will be named {title}")
-    return settings.SECOND
+    update_obj.message.reply_text(f"This is your group code: {group_code}. The following 3 messages are the "
+                                  f"observer password, member password, and admin password respectively. "
+                                  f"Keep the passwords safe, as they will allow any user to join and gain access to "
+                                  f"sensitive info in your group!\n"
+                                  f"To add a new member to your group, get them to use /joinexistinggroup and type "
+                                  f"the group code.")
+    update_obj.message.reply_text(observer_password)
+    update_obj.message.reply_text(member_password)
+    update_obj.message.reply_text(admin_password)
+    settings.current_group = group_to_enter
+    update_obj.message.reply_text(f"You have entered {title}. Feel free to perform whatever functions you need here! "
+                                  f"For starters, maybe /addusers?")
+    # Have some more conversation take place
+    return ConversationHandler.END
 
 
 # Enters a group

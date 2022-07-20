@@ -5,8 +5,10 @@ def init():
     global current_group
     global FIRST, SECOND, THIRD
     global help_message
+    global OBSERVER, MEMBER, ADMIN
     current_group = None
     FIRST, SECOND, THIRD = range(3)
+    OBSERVER, MEMBER, ADMIN = "Observer", "Member", "Admin"
     help_message = """
 Here is a walkthrough of what each of the functions will do: 
 

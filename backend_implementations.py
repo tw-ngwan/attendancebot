@@ -3,6 +3,19 @@
 from keyboards import *
 from telegram import Update
 from telegram.ext import CallbackContext
+from string import ascii_uppercase, ascii_lowercase, digits
+import random
+
+
+# Generates a random password
+def generate_random_password(password=True, length=12, iterations=1) -> list[str]:
+    # If want to generate group code instead
+    if not password:
+        group_code_length = 8
+        return [''.join([random.choice(ascii_uppercase) for _ in range(group_code_length)])]
+
+    return [''.join([random.choice(''.join([ascii_uppercase, ascii_lowercase, digits])) for _ in range(length)])
+            for _ in range(iterations)]
 
 
 def _start_broadcasting_attendance():
