@@ -19,9 +19,9 @@ Need to generate the attendance, and store the attendance status of people.
 SQL admin:
 Need to create 3 tables
 Table 1: groups
-id, parent_id, Name, Date Added, Group Code, Password
+id, parent_id, Name, Date Added, Group Code, Password, Member Password, Admin Password
 Table 2: users
-id, group_id, Name, ORD Date (?), Date Added, chat_id (if relevant)
+id, group_id, Name, ORD Date (?), Date Added, chat_id (if relevant), role, is_admin
 Table 3: attendance
 id, time period (morning, afternoon), datetime, user_id, status
 
@@ -32,7 +32,14 @@ Or maybe some table that just contains user's names and id
 Question: How do you join a group that already exists?
 Using group_id
 
-Delete state_variables
+Delete state_variables.py
+
+These are the following roles of people in each group:
+Head Admin: Typically creator. Can pass role to someone else. (Is this needed?)
+Admin: Has admin privileges.
+Member: Name is inside the name list. Has some privileges.
+Observer: Apart from viewing attendance, has no privileges
+*Even more below?
 
 """
 
@@ -40,10 +47,15 @@ Delete state_variables
 import os
 import sqlite3
 import settings
+from entry_help_functions import start, user_help
+from entry_group_functions import create_group, enter_group, leave_group, current_group, delete_group, merge_groups, \
+    join_group_members, join_existing_group, quit_group, change_group_title
+from state_group_functions import name_group_title, enter_group_implementation
+from telegram.ext import Updater, ConversationHandler, CommandHandler, MessageHandler, Filters
+
 # from entry_functions import start, update_preferences, update_news, update_timing, user_help, exit_function, quit_bot
 # from state_variables import *
 # from state_functions import get_news_sources, get_num_articles, get_frequency, get_news_sources_specific
-from telegram.ext import Updater, ConversationHandler, CommandHandler, MessageHandler, Filters
 
 
 API_KEY = os.getenv("ATTENDANCE_TELEGRAM_API")
@@ -58,13 +70,16 @@ print("Bot starting...")
 # Initialize all global variables
 settings.init()
 
-commands = ['start', 'help', 'tutorial',
+commands = ['start', 'help',
             'creategroup', 'entergroup', 'leavegroup', 'currentgroup', 'deletegroup', 'mergegroups',
-            'joingroupmembers', 'joinexistinggroup', 'quitexistinggroup'
+            'joingroupmembers', 'joinexistinggroup', 'quitexistinggroup', 'changegrouptitle'
             'addusers', 'removeusers', 'editusers', 'becomeadmin', 'getadmins', 'dismissadmins'
             'editsettings', 'changeattendance', 'changemyattendance', 'getgroupattendance', 'getuserattendance',
             'getallattendance', 'backdatechangeattendance'
             'stop']
+
+implemented_commands = ['start', 'help',
+                        'creategroup', 'entergroup', 'currentgroup']
 
 help_message = """
 Here is a walkthrough of what each of the functions will do: 
@@ -73,20 +88,21 @@ Here is a walkthrough of what each of the functions will do:
 
 /creategroup: Creates a group within your current group 
 /entergroup: Enters group to do stuff in the group
-/leavegroup: Leaves group you are currently in, goes one level up. 
+/leavegroup: Leaves group you are currently in after you finish doing stuff 
 /currentgroup: Returns the current group you are in, and None if not 
 /deletegroup: Deletes the group. Needs Admin privileges, and prompt to do so
 /mergegroups: Merges two groups together, with one becoming the parent group, and the other its child
 /joingroupmembers: Joins the members of two groups together, under a new name
 /joinexistinggroup: Joins a group that already exists, using its group id. 
-/quitexistinggroup: Quits a group you are currently in. 
+/quitgroup: Quits and exits your group. Do NOT confuse with leavegroup! 
+/changegrouptitle: Changes group title. Admin privileges required. 
 
 /addusers: Adds users to the group you are currently in (/entergroup). Recursive, till enter OK
 /removeusers: Removes users from the group you are currently in. Recursive, till enter OK 
 /editusers: Changes the names and details of the user 
 /becomeadmin: Enter a password to become group admin 
 /getadmins: Returns a list of all admin users. 
-/dismissadmins: Dismisses an admin user. Can only be done with Head Admin Privileges. 
+/dismissadmins: Dismisses an admin user. 
 
 /editsettings: Edits settings. To be elaborated
 /changeattendance: Changes the attendance status of any group members of group you are currently in (Admin?)
@@ -97,6 +113,21 @@ Here is a walkthrough of what each of the functions will do:
 /backdatechangeattendance: Changes the attendance of a user, backdated. Admin Privileges required. 
 
 /stop: Stops the bot from running. 
+
+Functions to finish first: 
+/creategroup 
+/entergroup
+/leavegroup 
+/currentgroup 
+/deletegroup 
+
+/addusers
+/removeusers
+/editusers
+
+/changeattendance
+/getgroupattendance
+/getuserattendance
 """
 
 "Schedule message: https://stackoverflow.com/questions/48288124/how-to-send-message-in-specific-time-telegrambot"
@@ -104,6 +135,92 @@ Here is a walkthrough of what each of the functions will do:
 
 # Main function
 def main():
+
+    # Introducing the necessary conversation handlers
+
+    # Start/help functions
+    start_handler = ConversationHandler(entry_points=[CommandHandler('start', start)], states={}, fallbacks=[])
+    help_handler = ConversationHandler(entry_points=[CommandHandler('help', user_help)], states={}, fallbacks=[])
+
+    # Group functions
+    create_group_handler = ConversationHandler(
+        entry_points=[CommandHandler('creategroup', create_group)],
+        states={
+            settings.FIRST: [MessageHandler(Filters.text, name_group_title)],
+        },
+        fallbacks=[]
+    )
+    enter_group_handler = ConversationHandler(
+        entry_points=[CommandHandler('entergroup', enter_group)],
+        states={
+            settings.FIRST: [MessageHandler(Filters.text, enter_group_implementation)],
+        },
+        fallbacks=[]
+    )
+    leave_group_handler = ConversationHandler(entry_points=[CommandHandler('leavegroup', leave_group)],
+                                              states={}, fallbacks=[])
+    current_group_handler = ConversationHandler(entry_points=[CommandHandler('currentgroup', current_group)],
+                                                states={}, fallbacks=[])
+    delete_group_handler = ConversationHandler(
+        entry_points=[CommandHandler('deletegroup', delete_group)],
+        states={
+
+        },
+        fallbacks=[]
+    )
+    merge_groups_handler = ConversationHandler(
+        entry_points=[CommandHandler('mergegroups', merge_groups)],
+        states={
+
+        },
+        fallbacks=[]
+    )
+    join_members_handler = ConversationHandler(
+        entry_points=[CommandHandler('joingroupmembers', join_group_members)],
+        states={
+
+        },
+        fallbacks=[]
+    )
+    join_groups_handler = ConversationHandler(
+        entry_points=[CommandHandler('joinexistinggroup', join_existing_group)],
+        states={
+
+        },
+        fallbacks=[]
+    )
+    quit_group_handler = ConversationHandler(
+        entry_points=[CommandHandler('quitgroup', quit_group)],
+        states={
+
+        },
+        fallbacks=[]
+    )
+    change_group_title_handler = ConversationHandler(
+        entry_points=[CommandHandler('changegrouptitle', change_group_title)],
+        states={
+
+        },
+        fallbacks=[]
+    )
+
+    global dispatcher
+    all_handlers = [start_handler, help_handler,
+                    create_group_handler, enter_group_handler, leave_group_handler, current_group_handler,
+                    delete_group_handler, merge_groups_handler, join_members_handler, join_groups_handler,
+                    quit_group_handler, change_group_title_handler]
+    for handler in all_handlers:
+        dispatcher.add_handler(handler)
+
+    updater.start_polling()
+
+    updater.idle()
+
+
+
+
+
+
 
     # # Introducing the necessary conversation handlers
     # # Start handler handles update, timings_update as well

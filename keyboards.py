@@ -3,6 +3,45 @@
 from telegram import KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
 from state_variables import MAX_ARTICLES, MAX_FREQUENCY
 
+
+yes_no_button_list = [[KeyboardButton(text="Yes")], [KeyboardButton(text="No")]]
+yes_no_button_markup = ReplyKeyboardMarkup(keyboard=yes_no_button_list, resize_keyboard=True,
+                                           one_time_keyboard=True)
+
+
+groups_list = []
+groups_button_markup = ReplyKeyboardMarkup(keyboard=groups_list, resize_keyboard=True,
+                                           one_time_keyboard=True)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Keyboard for selecting news sources
 # Note that this is an arbitrary list, we may not be going with this
 # Need to find a way to implement so that users can select a list of options. To be added

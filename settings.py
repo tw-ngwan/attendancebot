@@ -44,6 +44,8 @@ Attendance functions:
 
 /stop: Stops the bot from running. 
 
+To cancel a function you have called, type 'OK'. 
+
 If this is your first time using the bot, call /creategroup to create a new group, or /joingroup to join an existing group. 
 If you want to perform a function within a group (eg: /addusers, /getgroupattendance), make sure to call /entergroup first. 
 """
