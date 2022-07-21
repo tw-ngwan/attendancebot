@@ -17,13 +17,16 @@ If you send a message that says end, then it stores everything.
 Need to generate the attendance, and store the attendance status of people.
 
 SQL admin:
-Need to create 3 tables
+Need to create 4 tables
 Table 1: groups
 id, parent_id, Name, Date Added, Group Code, Observer Password, Member Password, Admin Password
 Table 2: users
+id, group_id, Name, Date Added
 id, group_id, Name, Date Added, chat_id (if relevant), role -> (Observer, Member, or Admin)
 Table 3: attendance
 id, time period (morning, afternoon), datetime, user_id, status
+Table 4: admins
+id, group_id, user_id, Date Added, chat_id, role -> (Observer, Member, or Admin)
 
 Do I need one more table to track users? Or no?
 Maybe a chat_id table that links chat_id to user_ids?
@@ -41,6 +44,8 @@ Member: Name is inside the name list. Has some privileges.
 Observer: Apart from viewing attendance, has no privileges
 *Even more below?
 
+Process detach issue: Make sure only one copy of script is running at a time
+
 """
 
 
@@ -50,6 +55,8 @@ import settings
 from entry_help_functions import start, user_help
 from entry_group_functions import create_group, enter_group, leave_group, current_group, delete_group, merge_groups, \
     join_group_members, join_existing_group, quit_group, change_group_title
+from entry_user_functions import add_users, get_users
+from state_user_functions import store_added_user
 from state_group_functions import name_group_title, enter_group_implementation
 from telegram.ext import Updater, ConversationHandler, CommandHandler, MessageHandler, Filters
 
@@ -102,6 +109,7 @@ Here is a walkthrough of what each of the functions will do:
 /addusers: Adds users to the group you are currently in (/entergroup). Recursive, till enter OK
 /removeusers: Removes users from the group you are currently in. Recursive, till enter OK 
 /editusers: Changes the names and details of the user 
+/getusers: Gets the names of all users 
 /becomeadmin: Enter a password to become group admin 
 /getadmins: Returns a list of all admin users. 
 /dismissadmins: Dismisses an admin user. 
@@ -117,15 +125,16 @@ Here is a walkthrough of what each of the functions will do:
 /stop: Stops the bot from running. 
 
 Functions to finish first: 
-/creategroup 
-/entergroup
-/leavegroup 
-/currentgroup 
+/creategroup O
+/entergroup O 
+/leavegroup O
+/currentgroup O
 /deletegroup 
 
 /addusers
 /removeusers
 /editusers
+/getusers
 
 /changeattendance
 /getgroupattendance
@@ -208,11 +217,25 @@ def main():
         fallbacks=[]
     )
 
+    # User functions
+    add_users_handler = ConversationHandler(
+        entry_points=[CommandHandler('addusers', add_users)],
+        states={
+            settings.FIRST: [MessageHandler(Filters.text, store_added_user)]
+        },
+        fallbacks=[]
+    )
+    get_users_handler = ConversationHandler(
+        entry_points=[CommandHandler('getusers', get_users)], states={}, fallbacks=[]
+    )
+
     global dispatcher
     all_handlers = [start_handler, help_handler,
                     create_group_handler, enter_group_handler, leave_group_handler, current_group_handler,
                     delete_group_handler, merge_groups_handler, join_members_handler, join_groups_handler,
-                    quit_group_handler, change_group_title_handler]
+                    quit_group_handler, change_group_title_handler,
+
+                    add_users_handler, get_users_handler]
     for handler in all_handlers:
         dispatcher.add_handler(handler)
 

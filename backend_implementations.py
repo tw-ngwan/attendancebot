@@ -18,6 +18,13 @@ def generate_random_password(password=True, length=12, iterations=1) -> list[str
             for _ in range(iterations)]
 
 
+# Gets the user's reply
+def get_user_reply(update_obj: Update, context: CallbackContext):
+    chat_id = update_obj.message.chat_id
+    message = update_obj.message.text.strip()
+    return chat_id, message
+
+
 def _start_broadcasting_attendance():
     pass
 

@@ -2,6 +2,7 @@ from telegram import Update
 from telegram.ext import CallbackContext, ConversationHandler
 import settings
 from keyboards import yes_no_button_markup, groups_button_markup
+import sqlite3
 
 
 # Creates a group
@@ -11,6 +12,7 @@ def create_group(update_obj: Update, context: CallbackContext) -> int:
 
 
 # Enters group
+# I think you can use a KeyboardMarkup for this
 def enter_group(update_obj: Update, context: CallbackContext) -> int:
     update_obj.message.reply_text("Which group would you like to enter?")
     return settings.FIRST
@@ -18,14 +20,25 @@ def enter_group(update_obj: Update, context: CallbackContext) -> int:
 
 # Leaves the current group to become 'groupless'
 def leave_group(update_obj: Update, context: CallbackContext) -> ConversationHandler.END:
-    update_obj.message.reply_text(f"You have left {settings.current_group}")
+    update_obj.message.reply_text(f"You have left the group")  # Get the group name
     settings.current_group = None
     return ConversationHandler.END
 
 
 # Gets the current group
 def current_group(update_obj: Update, context: CallbackContext) -> ConversationHandler.END:
-    update_obj.message.reply_text(f"You are currently in {settings.current_group}")
+    print("Current group called")
+    current_group_number = settings.current_group
+    if current_group_number is None:
+        update_obj.message.reply_text("You are currently not in any group")
+        return ConversationHandler.END
+    print(settings.current_group)
+    with sqlite3.connect('attendance.db') as con:
+        cur = con.cursor()
+        cur.execute("SELECT Name FROM groups WHERE id = ?", (current_group_number, ))
+        group_title = cur.fetchall()[0][0]
+        update_obj.message.reply_text(f"You are currently in {group_title}")
+        con.commit()
     return ConversationHandler.END
 
 
