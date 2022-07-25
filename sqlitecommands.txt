@@ -11,13 +11,22 @@ AdminPassword       TEXT NOT NULL,
 FOREIGN KEY(parent_id) REFERENCES groups(id)
 );
 
+// Old implementation. See below for new 
 CREATE TABLE users (
 id       INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL, 
 group_id INTEGER NOT NULL, 
 Name        TEXT NOT NULL, 
 DateAdded   TEXT NOT NULL, 
-chat_id     TEXT NOT NULL, 
+chat_id     TEXT         , 
 role        TEXT NOT NULL, 
+FOREIGN KEY(group_id) REFERENCES groups(id)
+);
+
+CREATE TABLE users (
+id       INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL, 
+group_id INTEGER NOT NULL, 
+Name        TEXT NOT NULL, 
+DateAdded   TEXT NOT NULL, 
 FOREIGN KEY(group_id) REFERENCES groups(id)
 );
 
@@ -30,20 +39,31 @@ AttendanceStatus TEXT NOT NULL,
 FOREIGN KEY(user_id) REFERENCES users(id)
 ); 
 
+CREATE TABLE admins (
+id       INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL, 
+group_id INTEGER NOT NULL, 
+user_id  INTEGER         , 
+DateAdded   TEXT NOT NULL, 
+chat_id     TEXT NOT NULL, 
+role        TEXT NOT NULL, 
+FOREIGN KEY(group_id) REFERENCES groups(id), 
+FOREIGN KEY(user_id) REFERENCES users(id)
+);
+
 
 
 // Inserting new group 
 INSERT INTO groups (
-id, parent_id, Name, DateAdded, GroupCode, 
+parent_id, Name, DateAdded, GroupCode, 
 ObserverPassword, MemberPassword, AdminPassword
 ) 
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+VALUES (?, ?, datetime('now'), ?, ?, ?, ?, ?)
 
 INSERT INTO groups (
-id, Name, DateAdded, GroupCode, 
+Name, DateAdded, GroupCode, 
 ObserverPassword, MemberPassword, AdminPassword
 )
-VALUES (?, ?, ?, ?, ?, ?, ?)
+VALUES (?, datetime('now'), ?, ?, ?, ?, ?)
 
 
 Name                TEXT NOT NULL, 

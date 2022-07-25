@@ -2,16 +2,25 @@
 
 from telegram import KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
 from state_variables import MAX_ARTICLES, MAX_FREQUENCY
+from backend_implementations import get_admin_groups
+import sqlite3
 
 
+# Button list for users to indicate boolean variables
 yes_no_button_list = [[KeyboardButton(text="Yes")], [KeyboardButton(text="No")]]
 yes_no_button_markup = ReplyKeyboardMarkup(keyboard=yes_no_button_list, resize_keyboard=True,
                                            one_time_keyboard=True)
 
 
-groups_list = []
-groups_button_markup = ReplyKeyboardMarkup(keyboard=groups_list, resize_keyboard=True,
-                                           one_time_keyboard=True)
+# Gets a KeyboardMarkup of al group names
+def group_name_keyboards(chat_id):
+    user_groups = get_admin_groups(chat_id)
+    group_names = [group[0] for group in user_groups]
+    groups_button_markup = ReplyKeyboardMarkup(keyboard=group_names, resize_keyboard=True,
+                                               one_time_keyboard=True)
+    return groups_button_markup
+
+
 
 
 

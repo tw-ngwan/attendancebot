@@ -7,14 +7,14 @@ from telegram import Update
 from telegram.ext import CallbackContext
 from telegram.ext import ConversationHandler
 import settings
-from keyboards import groups_button_markup
-from backend_implementations import generate_random_password, get_user_reply
+from keyboards import group_name_keyboards
+from backend_implementations import generate_random_password, get_admin_reply, get_admin_groups
 import sqlite3
 
 
 # Gets new group title
 def name_group_title(update_obj: Update, context: CallbackContext) -> ConversationHandler.END:
-    chat_id, title = get_user_reply(update_obj, context)
+    chat_id, title = get_admin_reply(update_obj, context)
     if title == "OK":
         update_obj.message.reply_text("Ok, quitting function now")
         return ConversationHandler.END
@@ -87,13 +87,13 @@ def name_group_title(update_obj: Update, context: CallbackContext) -> Conversati
 
 # Enters a group
 def enter_group_implementation(update_obj: Update, context: CallbackContext) -> ConversationHandler.END:
-    chat_id, title = get_user_reply(update_obj, context)
+    chat_id, title = get_admin_reply(update_obj, context)
     # Verify that that group exists first, then enter. Use SQLite to pull groups that user is part of.
     with sqlite3.connect('attendance.db') as con:
         cur = con.cursor()
         cur.execute(
             """
-            SELECT Name, admins.group_id
+            SELECT groups.zoom Name, admins.group_id
               FROM admins 
               JOIN groups 
                 ON admins.group_id = groups.id
@@ -112,5 +112,8 @@ def enter_group_implementation(update_obj: Update, context: CallbackContext) -> 
         # Save changes
         con.commit()
 
+    # I have one problem now, and that is after the title is entered, I need to change the group_id
+    # I don't want to need to recall user_groups again, so there needs to be some other way to find this
+    # Ok here's a proposed solution: you store the value of user_groups somewhere that is available
     update_obj.message.reply_text(f"Ok, you have entered {title}")
     return ConversationHandler.END

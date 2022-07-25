@@ -1,7 +1,7 @@
 from telegram import Update
 from telegram.ext import CallbackContext, ConversationHandler
 import settings
-from keyboards import yes_no_button_markup, groups_button_markup
+from keyboards import yes_no_button_markup, group_name_keyboards
 import sqlite3
 
 
@@ -14,7 +14,9 @@ def create_group(update_obj: Update, context: CallbackContext) -> int:
 # Enters group
 # I think you can use a KeyboardMarkup for this
 def enter_group(update_obj: Update, context: CallbackContext) -> int:
-    update_obj.message.reply_text("Which group would you like to enter?")
+    chat_id = update_obj.message.chat_id
+    groups_button_markup = group_name_keyboards(chat_id)
+    update_obj.message.reply_text("Which group would you like to enter?", reply_markup=groups_button_markup)
     return settings.FIRST
 
 
@@ -55,6 +57,8 @@ def delete_group(update_obj: Update, context: CallbackContext) -> int:
 # Merges groups -> handle problem of merging with oneself (or not)
 def merge_groups(update_obj: Update, context: CallbackContext) -> int:
     if _check_admin_privileges(update_obj, context):
+        chat_id = update_obj.message.chat_id
+        groups_button_markup = group_name_keyboards(chat_id)
         update_obj.message.reply_text("Which group do you want as the parent group?", reply_markup=groups_button_markup)
         return settings.FIRST
     update_obj.message.reply_text("Admin Privileges are required to merge groups!")
@@ -65,6 +69,8 @@ def merge_groups(update_obj: Update, context: CallbackContext) -> int:
 # Joins the members of two groups together
 def join_group_members(update_obj: Update, context: CallbackContext) -> int:
     if _check_admin_privileges(update_obj, context):
+        chat_id = update_obj.message.chat_id
+        groups_button_markup = group_name_keyboards(chat_id)
         update_obj.message.reply_text("Select the first group to be joined", reply_markup=groups_button_markup)
         return settings.FIRST
     update_obj.message.reply_text("Admin Privileges are required to join groups!")

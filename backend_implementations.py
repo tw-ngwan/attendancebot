@@ -1,10 +1,12 @@
 """Asks for user preferences; thereby implementing the backend for some state functions and entry functions"""
 
-from keyboards import *
+# from keyboards import *
 from telegram import Update
 from telegram.ext import CallbackContext
 from string import ascii_uppercase, ascii_lowercase, digits
 import random
+import sqlite3
+import itertools
 
 
 # Generates a random password
@@ -18,11 +20,37 @@ def generate_random_password(password=True, length=12, iterations=1) -> list[str
             for _ in range(iterations)]
 
 
+id_list = random.sample([''.join(string) for string in list(itertools.combinations(ascii_uppercase, 8))], 100000)
+
+
+def generate_random_id() -> str:
+    pass
+
+
 # Gets the user's reply
-def get_user_reply(update_obj: Update, context: CallbackContext):
+def get_admin_reply(update_obj: Update, context: CallbackContext):
     chat_id = update_obj.message.chat_id
     message = update_obj.message.text.strip()
     return chat_id, message
+
+
+# Gets the groups that an admin is in
+def get_admin_groups(chat_id):
+    with sqlite3.connect('attendance.db') as con:
+        cur = con.cursor()
+        cur.execute(
+            """
+            SELECT groups.Name, admins.group_id, admins.role
+              FROM admins
+              JOIN groups 
+                ON admins.group_id = groups.id 
+             WHERE admins.chat_id = ?
+            """,
+            (chat_id, )
+        )
+        user_groups = cur.fetchall()
+    # user_groups is a list of tuples, where each tuple is of the form (Group Name, Group ID, Role)
+    return user_groups
 
 
 def _start_broadcasting_attendance():

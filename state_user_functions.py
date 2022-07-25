@@ -1,6 +1,6 @@
 from telegram import Update
 from telegram.ext import CallbackContext, ConversationHandler
-from backend_implementations import get_user_reply
+from backend_implementations import get_admin_reply
 import settings
 import sqlite3
 
@@ -8,7 +8,7 @@ import sqlite3
 # Stores added user from add_users
 # Because it returns FIRST, it recursively calls itself (hopefully)
 def store_added_user(update_obj: Update, context: CallbackContext) -> int:
-    chat_id, name = get_user_reply(update_obj, context)
+    chat_id, name = get_admin_reply(update_obj, context)
     if name == "OK":
         update_obj.message.reply_text("Ok, quitting now...")
         return ConversationHandler.END

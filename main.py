@@ -46,7 +46,16 @@ Observer: Apart from viewing attendance, has no privileges
 
 Process detach issue: Make sure only one copy of script is running at a time
 
+
+Clarification:
+Admins are actual people
+Users are just names
+When you want a function that gets the groups that a person is in or whatever he said, call the admins table
 """
+
+"""What I will consider doing: 
+1. Add a group_title to settings.py 
+2. Change group_id to the group code """
 
 
 import os

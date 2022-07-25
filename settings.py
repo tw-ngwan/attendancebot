@@ -1,5 +1,15 @@
 """File that only contains the state variables"""
 
+import shelve
+import random
+import itertools
+from string import ascii_uppercase
+
+with shelve.open('groups.db') as s:
+    s['group_codes'] = random.sample([''.join(string) for string in list(itertools.combinations(ascii_uppercase, 8))], 100000)
+
+print("Done")
+
 
 def init():
     global current_group
