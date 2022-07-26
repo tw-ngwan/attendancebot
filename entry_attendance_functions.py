@@ -82,9 +82,29 @@ def get_group_attendance(update_obj: Update, context: CallbackContext) -> int:
     return ConversationHandler.END
 
 
+# # Changes attendance in the group you are in
+# def change_attendance(update_obj: Update, context: CallbackContext) -> int:
+#     current_group_id = settings.current_group_id
+#     update_obj.message.reply_text("Which users do you want to change the attendance of? To cancel select OK",
+#                                   reply_markup=get_group_members(current_group_id))
+#     return settings.FIRST
+
+
 # Changes attendance in the group you are in
+# Ok implement two functions: one to change today's attendance, the other to change tomorrow's
 def change_attendance(update_obj: Update, context: CallbackContext) -> int:
     current_group_id = settings.current_group_id
-    update_obj.message.reply_text("Which users do you want to change the attendance of? To cancel select OK",
-                                  reply_markup=get_group_members(current_group_id))
+    update_obj.message.reply_text("State the number of the user(s) whose attendance you want to change, followed "
+                                  "by a ':', then their attendance for the day. Type 'OK' to cancel. "
+                                  "The number of the user refers to the number next to their names. "
+                                  "Here are the possible attendance formats: ")
+    update_obj.message.reply_text("LL\n"
+                                  "P / LL\n"
+                                  "LL till 260722")
+    update_obj.message.reply_text("Here's an example of a successful attendance update message. Do NOT use ':' or "
+                                  "'/' anywhere else other than in marking attendance. ")
+    update_obj.message.reply_text("1: LL \n"
+                                  "3: P / OFF \n"
+                                  "7: MC till 280822 \n"
+                                  "4: OS (Jurong) / MA")
     return settings.FIRST

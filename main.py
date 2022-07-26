@@ -109,32 +109,34 @@ Here is a walkthrough of what each of the functions will do:
 /start: Once you activate the bot, it will send you the attendance statuses of each group you're in every day. 
 /help: Gives you the list of commands available and explains the concept of "groups" and "subgroups"
 
-/creategroup: Creates a group within your current group 
-/entergroup: Enters group to do stuff in the group
-/leavegroup: Leaves group you are currently in after you finish doing stuff 
-/currentgroup: Returns the current group you are in, and None if not 
-/deletegroup: Deletes the group. Needs Admin privileges, and prompt to do so
-/mergegroups: Merges two groups together, with one becoming the parent group, and the other its child
-/joingroupmembers: Joins the members of two groups together, under a new name
-/joinexistinggroup: Joins a group that already exists, using its group id. 
-/quitgroup: Quits and exits your group. Do NOT confuse with leavegroup! 
-/changegrouptitle: Changes group title. Admin privileges required. 
+/creategroup: Creates a group within your current group (None, Admin)
+/entergroup: Enters group to do stuff in the group (Observer)
+/leavegroup: Leaves group you are currently in after you finish doing stuff (Observer)
+/currentgroup: Returns the current group you are in, and None if not (Observer)
+/deletegroup: Deletes the group. Needs Admin privileges, and prompt to do so (Admin)
+/mergegroups: Merges two groups together, with one becoming the parent group, and the other its child (Admin)
+/joingroupmembers: Joins the members of two groups together, under a new name (Admin)
+/joinexistinggroup: Joins a group that already exists, using its group id. (None)
+/quitgroup: Quits and exits your group. Do NOT confuse with leavegroup! (Observer)
+/changegrouptitle: Changes group title. Admin privileges required. (Admin)
 
-/addusers: Adds users to the group you are currently in (/entergroup). Recursive, till enter OK
-/removeusers: Removes users from the group you are currently in. Recursive, till enter OK 
-/editusers: Changes the names and details of the user 
-/getusers: Gets the names of all users 
-/becomeadmin: Enter a password to become group admin 
-/getadmins: Returns a list of all admin users. 
-/dismissadmins: Dismisses an admin user. 
+/addusers: Adds users to the group you are currently in (/entergroup). Recursive, till enter OK (Member)
+/removeusers: Removes users from the group you are currently in. Recursive, till enter OK (Admin)
+/editusers: Changes the names and details of the user (Admin)
+/getusers: Gets the names of all users (Observer)
+/becomeadmin: Enter a password to become group admin (Observer, not for admin)
+/becomemember: Enter a password to become group member (Observer, not for admin and member)
+/getadmins: Returns a list of all admin users. (Is this needed?) 
+/dismissadmins: Dismisses an admin user. (Is this needed?) 
+/changeuserrank: Swaps the ranks of two users (Member)
 
-/editsettings: Edits settings. To be elaborated
-/changeattendance: Changes the attendance status of any group members of group you are currently in (Admin?)
-/changemyattendance: Changes your attendance 
-/getgroupattendance: Returns the attendance status of all group members on that day 
-/getuserattendance: Returns the attendance status of a user over a period of time (user-defined)
-/getallattendance: Returns the attendance status of all group members over a period of time
-/backdatechangeattendance: Changes the attendance of a user, backdated. Admin Privileges required. 
+/editsettings: Edits settings. To be elaborated (Is this needed?) 
+/changeattendance: Changes the attendance status of any group members of group you are currently in (Member)
+/changemyattendance: Changes your attendance (Is this needed?) 
+/getgroupattendance: Returns the attendance status of all group members on that day (Observer)
+/getuserattendance: Returns the attendance status of a user over a period of time (user-defined) (Member)
+/getallattendance: Returns the attendance status of all group members over a period of time (Member)
+/backdatechangeattendance: Changes the attendance of a user, backdated. Admin Privileges required. (Admin)
 
 /stop: Stops the bot from running. 
 

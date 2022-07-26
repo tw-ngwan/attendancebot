@@ -75,6 +75,27 @@ def get_group_members(group_id):
     return all_ids
 
 
+# Checks that a user is an admin
+# If admin, returns 0. If member, returns 1. If observer, returns 2. If none, returns -1
+def check_admin_privileges(chat_id, group_id):
+    with sqlite3.connect('attendance.db') as con:
+        cur = con.cursor()
+        cur.execute(
+            """
+            SELECT role 
+              FROM admins 
+             WHERE chat_id = ? 
+               AND group_id = ?
+            """,
+            (chat_id, group_id)
+        )
+        roles = cur.fetchall()
+        if not roles:
+            return -1
+        roles_dict = {'Admin': 0, 'Member': 1, 'Observer': 2}
+        return roles_dict[roles[0][0]]
+
+
 def _start_broadcasting_attendance():
     pass
 

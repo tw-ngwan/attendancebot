@@ -1,6 +1,7 @@
 """File that only contains the state variables"""
 current_group_id = None
 current_group_name = None
+temp_groups = {}
 
 
 class AttendanceRecord:
@@ -15,9 +16,11 @@ def init():
     global FIRST, SECOND, THIRD
     global help_message
     global OBSERVER, MEMBER, ADMIN
+    global temp_groups
     current_group_id = None
     current_group_name = None
     FIRST, SECOND, THIRD = range(3)
+    temp_groups = {}
     OBSERVER, MEMBER, ADMIN = "Observer", "Member", "Admin"
     help_message = """
 Here is a walkthrough of what each of the functions will do: 

@@ -77,3 +77,10 @@ GroupCode           TEXT NOT NULL,
 ObserverPassword    TEXT NOT NULL, 
 MemberPassword      TEXT NOT NULL, 
 AdminPassword       TEXT NOT NULL, 
+
+
+
+// Getting count of number of users in group 
+SELECT COUNT(*) 
+  FROM users
+ WHERE users.group_id = ?
