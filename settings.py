@@ -3,6 +3,13 @@ current_group_id = None
 current_group_name = None
 
 
+class AttendanceRecord:
+
+    def __init__(self, name):
+        self.name = name
+        self.attendance = []
+
+
 def init():
     global current_group_id, current_group_name
     global FIRST, SECOND, THIRD

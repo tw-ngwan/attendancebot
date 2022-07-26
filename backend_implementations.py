@@ -36,6 +36,7 @@ def get_admin_reply(update_obj: Update, context: CallbackContext):
 
 
 # Gets the groups that an admin is in
+# Returns list of tuples: (group_name, group_id, role)
 def get_admin_groups(chat_id):
     with sqlite3.connect('attendance.db') as con:
         cur = con.cursor()
@@ -56,6 +57,22 @@ def get_admin_groups(chat_id):
 
     # user_groups is a list of tuples, where each tuple is of the form (Group Name, Group ID, Role)
     return user_groups
+
+
+# Gets all the group members of a group
+# Returns list of tuples: (group_id, group_name)
+def get_group_members(group_id):
+    with sqlite3.connect('attendance.db') as con:
+        cur = con.cursor()
+        cur.execute(
+            """
+            SELECT id, Name FROM users
+             WHERE group_id = ?
+            """,
+            (group_id, )
+        )
+        all_ids = cur.fetchall()
+    return all_ids
 
 
 def _start_broadcasting_attendance():

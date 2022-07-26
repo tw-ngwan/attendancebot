@@ -4,11 +4,12 @@ id               INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL,
 parent_id        INTEGER         , 
 Name                TEXT NOT NULL, 
 DateAdded           TEXT NOT NULL, 
-NumDailyReports     INTEGER NOT NULL, 
+NumDailyReports  INTEGER NOT NULL, 
 GroupCode           TEXT UNIQUE NOT NULL, 
 ObserverPassword    TEXT NOT NULL, 
 MemberPassword      TEXT NOT NULL, 
 AdminPassword       TEXT NOT NULL,  
+group_size       INTEGER NOT NULL, 
 FOREIGN KEY(parent_id) REFERENCES groups(id)
 );
 
@@ -20,6 +21,7 @@ Name        TEXT NOT NULL,
 DateAdded   TEXT NOT NULL, 
 chat_id     TEXT         , 
 role        TEXT NOT NULL, 
+rank     INTEGER NOT NULL, 
 FOREIGN KEY(group_id) REFERENCES groups(id)
 );
 
@@ -33,10 +35,12 @@ FOREIGN KEY(group_id) REFERENCES groups(id)
 
 CREATE TABLE attendance (
 id            INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL, 
+group_id      INTEGER NOT NULL, 
 user_id       INTEGER NOT NULL, 
 TimePeriod    INTEGER NOT NULL, 
 Date             TEXT NOT NULL, 
 AttendanceStatus TEXT NOT NULL, 
+FOREIGN KEY(group_id) REFERENCES groups(id), 
 FOREIGN KEY(user_id) REFERENCES users(id)
 ); 
 

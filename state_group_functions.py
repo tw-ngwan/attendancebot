@@ -39,9 +39,9 @@ def name_group_title(update_obj: Update, context: CallbackContext) -> int:
                 """
                 INSERT INTO groups (
                 Name, DateAdded, NumDailyReports, GroupCode, 
-                ObserverPassword, MemberPassword, AdminPassword
+                ObserverPassword, MemberPassword, AdminPassword, group_size
                 )
-                VALUES (?, datetime('now'), 2, ?, ?, ?, ?)
+                VALUES (?, datetime('now'), 2, ?, ?, ?, ?, 0)
                 """,
                 (title, group_code, observer_password, member_password, admin_password)
             )
@@ -50,9 +50,9 @@ def name_group_title(update_obj: Update, context: CallbackContext) -> int:
                 """
                 INSERT INTO groups (
                 parent_id, Name, DateAdded, NumDailyReports, GroupCode, 
-                ObserverPassword, MemberPassword, AdminPassword
+                ObserverPassword, MemberPassword, AdminPassword, group_size
                 )
-                VALUES (?, ?, datetime('now'), 2, ?, ?, ?, ?)
+                VALUES (?, ?, datetime('now'), 2, ?, ?, ?, ?, 0)
                 """,
                 (current_group, title, group_code, observer_password, member_password, admin_password)
             )

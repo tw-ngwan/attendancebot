@@ -2,7 +2,7 @@
 
 from telegram import KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
 from state_variables import MAX_ARTICLES, MAX_FREQUENCY
-from backend_implementations import get_admin_groups
+from backend_implementations import get_admin_groups, get_group_members
 import sqlite3
 
 
@@ -23,6 +23,15 @@ def group_name_keyboards(chat_id):
     groups_button_markup = ReplyKeyboardMarkup(keyboard=group_names, resize_keyboard=True,
                                                one_time_keyboard=True)
     return groups_button_markup
+
+
+# Gets a KeyboardMarkup of all group users
+def group_users_keyboard(group_id):
+    all_members = get_group_members(group_id)
+    users_names = [[''.join([member[1], ' (', str(member[0]), ')'])] for member in all_members]
+    users_button_markup = ReplyKeyboardMarkup(keyboard=users_names, resize_keyboard=True,
+                                              one_time_keyboard=True)
+    return users_button_markup
 
 
 

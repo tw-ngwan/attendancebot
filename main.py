@@ -24,7 +24,7 @@ Table 2: users
 id, group_id, Name, Date Added
 id, group_id, Name, Date Added, chat_id (if relevant), role -> (Observer, Member, or Admin)
 Table 3: attendance
-id, time period (morning, afternoon), datetime, user_id, status
+id, time period (morning, afternoon), datetime, user_id, group_id, status
 Table 4: admins
 id, group_id, user_id, Date Added, chat_id, role -> (Observer, Member, or Admin)
 

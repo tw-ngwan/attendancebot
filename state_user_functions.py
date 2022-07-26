@@ -29,6 +29,8 @@ def store_added_user(update_obj: Update, context: CallbackContext) -> int:
             (current_group, name)
         )
 
+        # May want to add the attendance status of the user for the next 7 days first, so that attendance is tracked
+
         # Saves edits
         con.commit()
 

@@ -31,9 +31,9 @@ def start(update_obj: Update, context: CallbackContext) -> ConversationHandler.E
     Defaults.tzinfo = SGT
 
     # Starts running the repeated functions daily
-    context.job_queue.run_daily(trial_function, time=datetime.time(hour=11, minute=39, tzinfo=SGT),
-                                context=update_obj.message.chat_id)
-    context.job_queue.run_repeating(trial_function_two, interval=5, first=10, context=update_obj.message.chat_id)
+    # context.job_queue.run_daily(trial_function, time=datetime.time(hour=11, minute=39, tzinfo=SGT),
+    #                             context=update_obj.message.chat_id)
+    # context.job_queue.run_repeating(trial_function_two, interval=5, first=10, context=update_obj.message.chat_id)
     # context.job_queue.run_repeating(trial_function, interval=10, first=30, context=update_obj.message.chat_id)
 
     return ConversationHandler.END
@@ -53,6 +53,11 @@ Track the date (how?) """
 # I want the attendance of the whole of next week to be recorded. So on 2pm of day 1,
 # I want the attendance of day 8 to be stored in the SQLite table.
 # All entries will be P
+# Ok don't do this. Only update the attendance of the next day
+# And in fact I think we don't need this function
+# Here's what I will do: When the bot sends the next day's attendance, it will parse the table to look for members
+# and whether their attendance has been updated. If the answer is yes, display as such. If no, then display as P,
+# and update the members' attendance as P in the attendance database.
 def update_attendance():
 
     # First, we find all the groups that need attendance updated
