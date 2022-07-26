@@ -55,10 +55,6 @@ When you want a function that gets the groups that a person is in or whatever he
 For simplicity, the whole bot is in GMT+8 Timezone. I need to figure out how to set this
 """
 
-"""What I will consider doing: 
-1. Add a group_title to settings.py 
-2. Change group_id to the group code """
-
 
 import os
 import sqlite3
@@ -71,6 +67,12 @@ from entry_attendance_functions import get_group_attendance
 from state_user_functions import store_added_user
 from state_group_functions import name_group_title, enter_group_implementation
 from telegram.ext import Updater, ConversationHandler, CommandHandler, MessageHandler, Filters
+
+
+"""What I will consider doing: 
+1. Add a group_title to settings.py 
+2. Change group_id to the group code """
+
 
 # from entry_functions import start, update_preferences, update_news, update_timing, user_help, exit_function, quit_bot
 # from state_variables import *
@@ -164,7 +166,9 @@ def main():
     # Introducing the necessary conversation handlers
 
     # Start/help functions
-    start_handler = ConversationHandler(entry_points=[CommandHandler('start', start)], states={}, fallbacks=[])
+    start_handler = ConversationHandler(
+        entry_points=[CommandHandler('start', start, pass_job_queue=True)], states={}, fallbacks=[]
+    )
     help_handler = ConversationHandler(entry_points=[CommandHandler('help', user_help)], states={}, fallbacks=[])
 
     # Group functions

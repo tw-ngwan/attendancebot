@@ -1,4 +1,6 @@
-"""Updates the attendance of each group daily"""
+"""Updates the attendance of each group daily
+
+This file may not be necessary """
 
 from telegram import Update
 from telegram.ext import CallbackContext, ConversationHandler
@@ -23,7 +25,6 @@ def schedule_checker():
 # I want the attendance of day 8 to be stored in the SQLite table.
 # All entries will be P
 def update_attendance():
-    date_to_update = "date('now', '+7 day')"
 
     # First, we find all the groups that need attendance updated
     with sqlite3.connect('attendance.db') as con:
@@ -50,9 +51,6 @@ def update_attendance():
                     (?, ?, ?, date('now', '+7 day'), P)""",
                     (group_id, user_id, i + 1)  # 1-indexed
                 )
-
-
-# Sends the attendance message to user so that the user can update it if they need
 
 
 
