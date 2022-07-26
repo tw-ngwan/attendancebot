@@ -66,9 +66,16 @@ def get_submitted_users_attendance(update_obj: Update, context: CallbackContext)
                 continue
             user_id = user_id[0][0]
 
-        # Next, we check if it is the toxic one (the one with attendance over a long time)
+        # We set the number of days first (for the non-long attendance)
+        num_days = 1
+
+        # Next, we check if it is the long attendance
+        # May want to add a few print statements for debug
         if 'till' in entry[1]:
-            status, final_date = entry[1].split('till').strip()
+            status, final_date = entry[1].split('till')
+            status = status.strip()
+            final_date = final_date.strip()
+
             # If the final date is invalid, skip the entry
             if len(final_date) != 6:
                 update_obj.message.reply_text(f"Regarding user {entry[0]}: Date entered in an invalid format")
@@ -79,7 +86,8 @@ def get_submitted_users_attendance(update_obj: Update, context: CallbackContext)
             except ValueError:
                 update_obj.message.reply_text(f"Regarding user {entry[0]}: Date must be valid")
                 continue
-            # If we manage to reach here, that means that we have already passed all the tests.
+
+            # If we manage to reach here, that means the date is a valid date. We now compare with today.
             today = datetime.date.today()
             # If the date is larger than today, then continue
             if today > final_date:
@@ -93,41 +101,28 @@ def get_submitted_users_attendance(update_obj: Update, context: CallbackContext)
 
             # Get the number of days
             num_days = (final_date - today).days + 1  # Need to include today also
-            data_table = [(current_group, user_id, j + 1, f"date('now', '+{i} day')", entry[1][i])
-                          for i in range(num_days) for j in range(len(entry[1]))]
 
-            # Adding all the attendance changes into the attendance table
-            # See if you can merge this with the bottom one, so that you don't duplicate code. Perhaps what changes
-            # or not is data_table
-            with sqlite3.connect('attendance.db') as con:
-                cur = con.cursor()
-                cur.executemany(
-                    """
-                    INSERT INTO attendance
-                    (group_id, user_id, TimePeriod, Date, AttendanceStatus)
-                    VALUES (?, ?, ?, ?, ?)""",
-                    data_table
-                )
-
-                # Save changes
-                con.commit()
-
-            # Update user about success
-            update_obj.message.reply_text(f"User {entry[0]}'s attendance updated.")
-            continue
+            # This is so that it can be split later (for eg: LL --> LL / LL)
+            status = ' / '.join([status, status])
 
         # Else, if the attendance is listed without '/'
         elif '/' not in entry[1]:
-            entry[1] = ' / '.join([entry[1], entry[1]])
+            status = ' / '.join([entry[1], entry[1]])
+        else:
+            status = entry[1]
 
+        # This updates the user's attendance for all
         # Update the attendance of the user
         with sqlite3.connect('attendance.db') as con:
             cur = con.cursor()
-            entry[1] = entry[1].split('/').strip()
+            # Gets the values of all
+            status = [value.strip() for value in status.split('/')]
 
             # You need to update the date to make it correct. It can be either today or tomorrow.
-            attendances_to_update = [(current_group, user_id, i + 1, "date('now')", entry[1][i])
-                                     for i in range(len(entry[1]))]
+            # For now, implementation is today. What this does is create one entry for each day, for each
+            # time period. All of them then get updated at once using executemany.
+            attendances_to_update = [(current_group, user_id, j + 1, f"date('now', '+{i} day')", status[i])
+                                     for i in range(num_days) for j in range(len(entry[1]))]
 
             # Inserts all the values into the table
             cur.executemany(

@@ -52,7 +52,7 @@ Admins are actual people
 Users are just names
 When you want a function that gets the groups that a person is in or whatever he said, call the admins table
 
-For simplicity, the whole bot is in GMT+8 Timezone. I need to figure out how to set this
+Add functionality to check for weekends. Also find a way to see when the final day of an extended block of LL or sth
 """
 
 
