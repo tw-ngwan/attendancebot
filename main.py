@@ -19,7 +19,7 @@ Need to generate the attendance, and store the attendance status of people.
 SQL admin:
 Need to create 4 tables
 Table 1: groups
-id, parent_id, Name, Date Added, Group Code, Observer Password, Member Password, Admin Password
+id, parent_id, Name, Date Added, No. Daily Reports, Group Code, Observer Password, Member Password, Admin Password
 Table 2: users
 id, group_id, Name, Date Added
 id, group_id, Name, Date Added, chat_id (if relevant), role -> (Observer, Member, or Admin)
@@ -51,6 +51,8 @@ Clarification:
 Admins are actual people
 Users are just names
 When you want a function that gets the groups that a person is in or whatever he said, call the admins table
+
+For simplicity, the whole bot is in GMT+8 Timezone. I need to figure out how to set this
 """
 
 """What I will consider doing: 
@@ -65,6 +67,7 @@ from entry_help_functions import start, user_help
 from entry_group_functions import create_group, enter_group, leave_group, current_group, delete_group, merge_groups, \
     join_group_members, join_existing_group, quit_group, change_group_title
 from entry_user_functions import add_users, get_users
+from entry_attendance_functions import get_group_attendance
 from state_user_functions import store_added_user
 from state_group_functions import name_group_title, enter_group_implementation
 from telegram.ext import Updater, ConversationHandler, CommandHandler, MessageHandler, Filters
@@ -94,10 +97,10 @@ commands = ['start', 'help',
             'getallattendance', 'backdatechangeattendance'
             'stop']
 
-implemented_commands = ['entergroup', 'currentgroup']
+implemented_commands = ['currentgroup']
 
 fully_implemented_commands = ['start', 'help',
-                              'creategroup']
+                              'creategroup', 'entergroup', ]
 
 help_message = """
 Here is a walkthrough of what each of the functions will do: 
@@ -238,13 +241,21 @@ def main():
         entry_points=[CommandHandler('getusers', get_users)], states={}, fallbacks=[]
     )
 
+    # Attendance functions
+    get_attendance_handler = ConversationHandler(
+        entry_points=[CommandHandler('getgroupattendance', get_group_attendance)], states={}, fallbacks=[]
+    )
+
     global dispatcher
     all_handlers = [start_handler, help_handler,
                     create_group_handler, enter_group_handler, leave_group_handler, current_group_handler,
                     delete_group_handler, merge_groups_handler, join_members_handler, join_groups_handler,
                     quit_group_handler, change_group_title_handler,
 
-                    add_users_handler, get_users_handler]
+                    add_users_handler, get_users_handler,
+
+                    get_attendance_handler,
+                    ]
     for handler in all_handlers:
         dispatcher.add_handler(handler)
 

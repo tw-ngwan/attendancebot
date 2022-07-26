@@ -23,24 +23,20 @@ def enter_group(update_obj: Update, context: CallbackContext) -> int:
 # Leaves the current group to become 'groupless'
 def leave_group(update_obj: Update, context: CallbackContext) -> ConversationHandler.END:
     update_obj.message.reply_text(f"You have left the group")  # Get the group name
-    settings.current_group = None
+    settings.current_group_id = None
     return ConversationHandler.END
 
 
 # Gets the current group
 def current_group(update_obj: Update, context: CallbackContext) -> ConversationHandler.END:
     print("Current group called")
-    current_group_number = settings.current_group
+    current_group_number = settings.current_group_id
+    current_group_name = settings.current_group_name
     if current_group_number is None:
         update_obj.message.reply_text("You are currently not in any group")
         return ConversationHandler.END
-    print(settings.current_group)
-    with sqlite3.connect('attendance.db') as con:
-        cur = con.cursor()
-        cur.execute("SELECT Name FROM groups WHERE id = ?", (current_group_number, ))
-        group_title = cur.fetchall()[0][0]
-        update_obj.message.reply_text(f"You are currently in {group_title}")
-        con.commit()
+    # print(settings.current_group_id)
+    update_obj.message.reply_text(f"You are currently in {current_group_name}")
     return ConversationHandler.END
 
 

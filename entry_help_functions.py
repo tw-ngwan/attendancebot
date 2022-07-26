@@ -23,6 +23,10 @@ def start(update_obj: Update, context: CallbackContext) -> ConversationHandler.E
     return ConversationHandler.END
 
 
+"https://stackoverflow.com/questions/59611662/how-to-send-message-from-bot-to-user-at-a-fixed-time-or-at-intervals-through-pyt"
+"How to let the bot prompt the user every day, run function repeatedly. "
+
+
 # Sends user help
 def user_help(update_obj: Update, context: CallbackContext) -> int:
     update_obj.message.reply_text(settings.help_message)

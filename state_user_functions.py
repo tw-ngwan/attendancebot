@@ -16,7 +16,7 @@ def store_added_user(update_obj: Update, context: CallbackContext) -> int:
     # Adds the new name to users database
     with sqlite3.connect('attendance.db') as con:
         cur = con.cursor()
-        current_group = settings.current_group
+        current_group = settings.current_group_id
 
         # Adds user
         cur.execute(

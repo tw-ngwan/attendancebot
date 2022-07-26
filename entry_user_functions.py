@@ -6,7 +6,7 @@ import sqlite3
 
 # Adds a user to the bot
 def add_users(update_obj: Update, context: CallbackContext) -> int:
-    if settings.current_group is None:
+    if settings.current_group_id is None:
         update_obj.message.reply_text("Enter a group first with /entergroup!")
         return ConversationHandler.END
     update_obj.message.reply_text("Type in the name of the user you want to add. "
@@ -27,14 +27,14 @@ def edit_users(update_obj: Update, context: CallbackContext) -> int:
 
 # Gets a list of all users
 def get_users(update_obj: Update, context: CallbackContext) -> int:
-    if settings.current_group is None:
+    if settings.current_group_id is None:
         update_obj.message.reply_text("Enter a group first with /entergroup!")
         return ConversationHandler.END
     update_obj.message.reply_text("Ok, getting all users...")
     with sqlite3.connect('attendance.db') as con:
-        current_group = settings.current_group
+        current_group_id = settings.current_group_id
         cur = con.cursor()
-        cur.execute("""SELECT Name FROM users WHERE group_id = ?""", (current_group, ))
+        cur.execute("""SELECT Name FROM users WHERE group_id = ?""", (current_group_id, ))
         names = [data[0] for data in cur.fetchall()]
 
     name_message = '\n'.join(["Members: "] + names)

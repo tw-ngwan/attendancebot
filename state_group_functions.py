@@ -8,12 +8,21 @@ from telegram.ext import CallbackContext
 from telegram.ext import ConversationHandler
 import settings
 from keyboards import group_name_keyboards
-from backend_implementations import generate_random_password, get_admin_reply, get_admin_groups
+from backend_implementations import generate_random_password, generate_random_group_code, \
+    get_admin_reply, get_admin_groups
 import sqlite3
 
 
+# # Gets the number of daily updates for attendance wanted
+# def get_num_daily_updates(update_obj: Update, context: CallbackContext) -> int:
+#     chat_id, title = get_admin_reply(update_obj, context)
+#     if title == "OK":
+#         update_obj.message.reply_text("Ok, quitting function now")
+
+
 # Gets new group title
-def name_group_title(update_obj: Update, context: CallbackContext) -> ConversationHandler.END:
+# TO BE ADDED: Get an option for user to toggle number of daily reports they want, from 1-4
+def name_group_title(update_obj: Update, context: CallbackContext) -> int:
     chat_id, title = get_admin_reply(update_obj, context)
     if title == "OK":
         update_obj.message.reply_text("Ok, quitting function now")
@@ -21,18 +30,18 @@ def name_group_title(update_obj: Update, context: CallbackContext) -> Conversati
     # SQLite Execution: To store the group and the new user
     with sqlite3.connect('attendance.db') as con:
         cur = con.cursor()
-        current_group = settings.current_group
-        group_code = generate_random_password(password=False)[0]
+        current_group = settings.current_group_id
+        group_code = generate_random_group_code()
         observer_password, member_password, admin_password = generate_random_password(iterations=3)
         # Stores the group in SQLite
         if current_group is None:
             cur.execute(
                 """
                 INSERT INTO groups (
-                Name, DateAdded, GroupCode, 
+                Name, DateAdded, NumDailyReports, GroupCode, 
                 ObserverPassword, MemberPassword, AdminPassword
                 )
-                VALUES (?, datetime('now'), ?, ?, ?, ?)
+                VALUES (?, datetime('now'), 2, ?, ?, ?, ?)
                 """,
                 (title, group_code, observer_password, member_password, admin_password)
             )
@@ -40,10 +49,10 @@ def name_group_title(update_obj: Update, context: CallbackContext) -> Conversati
             cur.execute(
                 """
                 INSERT INTO groups (
-                parent_id, Name, DateAdded, GroupCode, 
+                parent_id, Name, DateAdded, NumDailyReports, GroupCode, 
                 ObserverPassword, MemberPassword, AdminPassword
                 )
-                VALUES (?, ?, datetime('now'), ?, ?, ?, ?)
+                VALUES (?, ?, datetime('now'), 2, ?, ?, ?, ?)
                 """,
                 (current_group, title, group_code, observer_password, member_password, admin_password)
             )
@@ -52,6 +61,8 @@ def name_group_title(update_obj: Update, context: CallbackContext) -> Conversati
         cur.execute("""SELECT id FROM groups WHERE GroupCode = ?""", (group_code,))
         group_to_enter = cur.fetchall()[0][0]
         print(group_to_enter)
+        settings.current_group_id = group_to_enter
+        settings.current_group_name = title
         con.commit()
 
         # Adds the user as an Admin
@@ -78,7 +89,6 @@ def name_group_title(update_obj: Update, context: CallbackContext) -> Conversati
     update_obj.message.reply_text(observer_password)
     update_obj.message.reply_text(member_password)
     update_obj.message.reply_text(admin_password)
-    settings.current_group = group_to_enter
     update_obj.message.reply_text(f"You have entered {title}. Feel free to perform whatever functions you need here! "
                                   f"For starters, maybe /addusers?")
     # Have some more conversation take place
@@ -88,32 +98,23 @@ def name_group_title(update_obj: Update, context: CallbackContext) -> Conversati
 # Enters a group
 def enter_group_implementation(update_obj: Update, context: CallbackContext) -> ConversationHandler.END:
     chat_id, title = get_admin_reply(update_obj, context)
-    # Verify that that group exists first, then enter. Use SQLite to pull groups that user is part of.
-    with sqlite3.connect('attendance.db') as con:
-        cur = con.cursor()
-        cur.execute(
-            """
-            SELECT groups.zoom Name, admins.group_id
-              FROM admins 
-              JOIN groups 
-                ON admins.group_id = groups.id
-             WHERE chat_id = ?""",
-            (chat_id, )
-        )
-        user_groups = cur.fetchall()
-        group_id = None
-        for i in range(len(user_groups)):
-            if user_groups[i][0].lower() == title.lower():
-                group_id = user_groups[i][1]
-                break
-        if group_id is not None:
-            settings.current_group = group_id
 
-        # Save changes
-        con.commit()
+    # Gets the group id from the title
+    # The title is of the following form: '{group_name} ({group_id})'. So the code finds the bracket from the back
+    group_name = ''
+    group_id = -1
+    for i in range(len(title) - 2, -1, -1):
+        if title[i] == '(':
+            group_name = title[:i - 1]
+            group_id = int(title[i + 1:len(title) - 1])
+            break
 
-    # I have one problem now, and that is after the title is entered, I need to change the group_id
-    # I don't want to need to recall user_groups again, so there needs to be some other way to find this
-    # Ok here's a proposed solution: you store the value of user_groups somewhere that is available
-    update_obj.message.reply_text(f"Ok, you have entered {title}")
+    if group_id == -1:
+        update_obj.message.reply_text("Something went wrong, please try again!")
+        return ConversationHandler.END
+
+    settings.current_group_id = group_id
+    settings.current_group_name = group_name
+
+    update_obj.message.reply_text(f"Ok, you have entered {group_name}")
     return ConversationHandler.END

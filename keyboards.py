@@ -12,10 +12,14 @@ yes_no_button_markup = ReplyKeyboardMarkup(keyboard=yes_no_button_list, resize_k
                                            one_time_keyboard=True)
 
 
-# Gets a KeyboardMarkup of al group names
+# Gets a KeyboardMarkup of all group names
+# Each group name comprises of '{group_name} ({group_id})'. This enables me to get the group_id to update the settings.
 def group_name_keyboards(chat_id):
     user_groups = get_admin_groups(chat_id)
-    group_names = [group[0] for group in user_groups]
+    group_names = [[''.join([group[0], ' (', str(group[1]), ')'])] for group in user_groups]
+    # group_names = [["Test"], ["Trial"]]
+    # print(group_names)
+    # group_names = [group[0] for group in user_groups]
     groups_button_markup = ReplyKeyboardMarkup(keyboard=group_names, resize_keyboard=True,
                                                one_time_keyboard=True)
     return groups_button_markup

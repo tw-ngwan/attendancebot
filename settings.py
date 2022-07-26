@@ -1,22 +1,15 @@
 """File that only contains the state variables"""
-
-import shelve
-import random
-import itertools
-from string import ascii_uppercase
-
-with shelve.open('groups.db') as s:
-    s['group_codes'] = random.sample([''.join(string) for string in list(itertools.combinations(ascii_uppercase, 8))], 100000)
-
-print("Done")
+current_group_id = None
+current_group_name = None
 
 
 def init():
-    global current_group
+    global current_group_id, current_group_name
     global FIRST, SECOND, THIRD
     global help_message
     global OBSERVER, MEMBER, ADMIN
-    current_group = None
+    current_group_id = None
+    current_group_name = None
     FIRST, SECOND, THIRD = range(3)
     OBSERVER, MEMBER, ADMIN = "Observer", "Member", "Admin"
     help_message = """
@@ -41,6 +34,7 @@ User functions:
 /addusers: Adds users to the group you are currently in (/entergroup). Recursive, till enter OK
 /removeusers: Removes users from the group you are currently in. Recursive, till enter OK 
 /editusers: Changes the names and details of the user 
+/getusers: Gets all users 
 /becomeadmin: Enter a password to become group admin 
 /getadmins: Returns a list of all admin users. 
 /dismissadmins: Dismisses an admin user. Can only be done with Head Admin Privileges. 

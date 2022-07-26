@@ -7,24 +7,25 @@ from string import ascii_uppercase, ascii_lowercase, digits
 import random
 import sqlite3
 import itertools
+import shelve
 
 
 # Generates a random password
-def generate_random_password(password=True, length=12, iterations=1) -> list[str]:
-    # If want to generate group code instead
-    if not password:
-        group_code_length = 8
-        return [''.join([random.choice(ascii_uppercase) for _ in range(group_code_length)])]
-
+def generate_random_password(length=12, iterations=1) -> list[str]:
     return [''.join([random.choice(''.join([ascii_uppercase, ascii_lowercase, digits])) for _ in range(length)])
             for _ in range(iterations)]
 
 
-id_list = random.sample([''.join(string) for string in list(itertools.combinations(ascii_uppercase, 8))], 100000)
-
-
-def generate_random_id() -> str:
-    pass
+# Generates a random, unique group code
+def generate_random_group_code() -> str:
+    # How this works:
+    # I have a database of 100,000 group codes stored in a database (shelve), along with the current_group_number
+    # Whenever a new group is created, the next group code in line will be used, to ensure that it remains unique.
+    # Thus, this allows for O(1) lookup and generation of the group code
+    with shelve.open('groups.db') as s:
+        group_code = s['group_codes'][s['current_group']]
+        s['current_group'] += 1
+    return group_code
 
 
 # Gets the user's reply
@@ -49,6 +50,10 @@ def get_admin_groups(chat_id):
             (chat_id, )
         )
         user_groups = cur.fetchall()
+
+        # Save changes
+        con.commit()
+
     # user_groups is a list of tuples, where each tuple is of the form (Group Name, Group ID, Role)
     return user_groups
 
