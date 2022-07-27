@@ -63,7 +63,7 @@ from entry_help_functions import start, user_help
 from entry_group_functions import create_group, enter_group, leave_group, current_group, delete_group, merge_groups, \
     join_group_members, join_existing_group, quit_group, change_group_title
 from entry_user_functions import add_users, get_users
-from entry_attendance_functions import get_group_attendance, change_attendance
+from entry_attendance_functions import get_today_group_attendance, change_attendance
 from state_group_functions import name_group_title, enter_group_implementation
 from state_user_functions import store_added_user
 from state_attendance_functions import get_submitted_users_attendance
@@ -250,7 +250,7 @@ def main():
 
     # Attendance functions
     get_attendance_handler = ConversationHandler(
-        entry_points=[CommandHandler('getgroupattendance', get_group_attendance)], states={}, fallbacks=[]
+        entry_points=[CommandHandler('getgroupattendance', get_today_group_attendance)], states={}, fallbacks=[]
     )
     change_attendance_handler = ConversationHandler(
         entry_points=[CommandHandler('changeattendance', change_attendance)],

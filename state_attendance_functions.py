@@ -7,7 +7,7 @@ import sqlite3
 from state_variables import *
 import settings
 import datetime
-from backend_implementations import get_group_members, get_admin_reply, check_admin_privileges
+from backend_implementations import get_group_members, get_admin_reply, check_admin_privileges, check_valid_datetime
 
 
 # I need to find a way to record what the attendance of a person is over multiple days, that is track the streak of
@@ -78,27 +78,12 @@ def get_submitted_users_attendance(update_obj: Update, context: CallbackContext)
             status = status.strip()
             final_date = final_date.strip()
 
-            # If the final date is invalid, skip the entry
-            if len(final_date) != 6:
-                update_obj.message.reply_text(f"Regarding user {entry[0]}: Date entered in an invalid format")
-                continue
-            day, month, year = int(final_date[:2]), int(final_date[2:4]), int('20' + final_date[4:])
-            try:
-                final_date = datetime.date(year=year, month=month, day=day)
-            except ValueError:
-                update_obj.message.reply_text(f"Regarding user {entry[0]}: Date must be valid")
-                continue
-
-            # If we manage to reach here, that means the date is a valid date. We now compare with today.
+            # We get today's date to compare with
             today = datetime.date.today()
-            # If the date is larger than today, then continue
-            if today > final_date:
-                update_obj.message.reply_text(f"Regarding user {entry[0]}: Final date is before today's date")
-                continue
-            # If the final date is more than 2 years in the future, then continue
-            elif today + datetime.timedelta(days=730) < final_date:
-                update_obj.message.reply_text(f"Regarding user {entry[0]}: Final date must be less than 2 years in "
-                                              f"future")
+            final_date = check_valid_datetime(date_to_check=final_date, date_compared=today, after_date=True)
+            if not final_date:
+                update_obj.message.reply_text(f"Regarding user {entry[0]}: Date entered in an invalid format. "
+                                              f"Date must also be after today's date, and less than 2 years in future.")
                 continue
 
             # Get the number of days
