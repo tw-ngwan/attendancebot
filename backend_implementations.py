@@ -257,7 +257,7 @@ def get_group_attendance_backend(group_id: int, date: datetime.date=None):
             INSERT INTO attendance
             (group_id, user_id, TimePeriod, Date, AttendanceStatus)
             VALUES 
-            (?, ?, ?, date('now', ?), P)""",
+            (?, ?, ?, date('now', ?), 'P')""",
             users_to_add
         )
 
@@ -307,6 +307,7 @@ def change_group_attendance_backend(update_obj: Update, context: CallbackContext
             status = status.strip()
             final_date = final_date.strip()
 
+            # This part has issues, need to debug
             final_date = check_valid_datetime(date_to_check=final_date, date_compared=day, after_date=True)
             if not final_date:
                 update_obj.message.reply_text(f"Regarding user {entry[0]}: Date entered in an invalid format. "

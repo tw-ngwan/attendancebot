@@ -52,7 +52,7 @@ def change_attendance(update_obj: Update, context: CallbackContext) -> int:
         return ConversationHandler.END
 
     # Check that the user is at least member
-    if check_admin_privileges(current_group_id, chat_id) >= 2:
+    if check_admin_privileges(chat_id, current_group_id) >= 2:
         reply_non_admin(update_obj, context, "Member")
         return ConversationHandler.END
 
@@ -72,7 +72,7 @@ def change_any_day_attendance(update_obj: Update, context: CallbackContext) -> i
         return ConversationHandler.END
 
     # Check that the user is at least member
-    if check_admin_privileges(current_group_id, chat_id) >= 1:
+    if check_admin_privileges(chat_id, current_group_id) >= 1:
         reply_non_admin(update_obj, context, "Admin")
         return ConversationHandler.END
 

@@ -68,7 +68,7 @@ from entry_attendance_functions import get_today_group_attendance, get_tomorrow_
 from state_group_functions import name_group_title, enter_group_implementation
 from state_user_functions import store_added_user
 from state_attendance_functions import change_today_attendance_follow_up, change_tomorrow_attendance_follow_up, \
-    change_any_day_attendance_get_day, change_any_day_attendance_follow_up
+    change_any_day_attendance_get_day, change_any_day_attendance_follow_up, get_specific_day_group_attendance_follow_up
 from telegram.ext import Updater, ConversationHandler, CommandHandler, MessageHandler, Filters
 
 
@@ -261,7 +261,11 @@ def main():
         entry_points=[CommandHandler('getattendancetomorrow', get_tomorrow_group_attendance)], states={}, fallbacks=[]
     )
     get_any_day_attendance_handler = ConversationHandler(
-        entry_points=[CommandHandler('getattendanceanyday', get_any_day_group_attendance)], states={}, fallbacks=[]
+        entry_points=[CommandHandler('getattendanceanyday', get_any_day_group_attendance)],
+        states={
+            settings.FIRST: [MessageHandler(Filters.text, get_specific_day_group_attendance_follow_up)]
+        },
+        fallbacks=[]
     )
     change_today_attendance_handler = ConversationHandler(
         entry_points=[CommandHandler('changeattendancetoday', change_attendance)],
