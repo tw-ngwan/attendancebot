@@ -33,7 +33,7 @@ def get_tomorrow_group_attendance(update_obj: Update, context: CallbackContext) 
 
 
 # Gets the attendance of the group on a specific day
-def get_specific_day_group_attendance(update_obj: Update, context: CallbackContext) -> int:
+def get_any_day_group_attendance(update_obj: Update, context: CallbackContext) -> int:
     update_obj.message.reply_text("Which day's attendance would you like to get? "
                                   "In your next message, please enter the desired date (and nothing else) in "
                                   "6-digit form (eg: 210722)")
@@ -62,7 +62,7 @@ def change_attendance(update_obj: Update, context: CallbackContext) -> int:
 
 
 # Asks question to change attendance of group on any day
-def change_attendance_any_day(update_obj: Update, context: CallbackContext) -> int:
+def change_any_day_attendance(update_obj: Update, context: CallbackContext) -> int:
     current_group_id = settings.current_group_id
     chat_id = update_obj.message.chat_id
 

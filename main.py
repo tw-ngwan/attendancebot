@@ -63,10 +63,12 @@ from entry_help_functions import start, user_help
 from entry_group_functions import create_group, enter_group, leave_group, current_group, delete_group, merge_groups, \
     join_group_members, join_existing_group, quit_group, change_group_title
 from entry_user_functions import add_users, get_users
-from entry_attendance_functions import get_today_group_attendance, change_attendance
+from entry_attendance_functions import get_today_group_attendance, get_tomorrow_group_attendance, \
+    get_any_day_group_attendance, change_attendance, change_any_day_attendance
 from state_group_functions import name_group_title, enter_group_implementation
 from state_user_functions import store_added_user
-from state_attendance_functions import get_submitted_users_attendance
+from state_attendance_functions import change_today_attendance_follow_up, change_tomorrow_attendance_follow_up, \
+    change_any_day_attendance_get_day, change_any_day_attendance_follow_up
 from telegram.ext import Updater, ConversationHandler, CommandHandler, MessageHandler, Filters
 
 
@@ -252,13 +254,34 @@ def main():
     )
 
     # Attendance functions
-    get_attendance_handler = ConversationHandler(
+    get_today_attendance_handler = ConversationHandler(
         entry_points=[CommandHandler('getattendancetoday', get_today_group_attendance)], states={}, fallbacks=[]
     )
-    change_attendance_handler = ConversationHandler(
-        entry_points=[CommandHandler('changeattendance', change_attendance)],
+    get_tomorrow_attendance_handler = ConversationHandler(
+        entry_points=[CommandHandler('getattendancetomorrow', get_tomorrow_group_attendance)], states={}, fallbacks=[]
+    )
+    get_any_day_attendance_handler = ConversationHandler(
+        entry_points=[CommandHandler('getattendanceanyday', get_any_day_group_attendance)], states={}, fallbacks=[]
+    )
+    change_today_attendance_handler = ConversationHandler(
+        entry_points=[CommandHandler('changeattendancetoday', change_attendance)],
         states={
-            settings.FIRST: [MessageHandler(Filters.text, get_submitted_users_attendance)]
+            settings.FIRST: [MessageHandler(Filters.text, change_today_attendance_follow_up)]
+        },
+        fallbacks=[]
+    )
+    change_tomorrow_attendance_handler = ConversationHandler(
+        entry_points=[CommandHandler('changeattendancetomorrow', change_attendance)],
+        states={
+            settings.FIRST: [MessageHandler(Filters.text, change_tomorrow_attendance_follow_up)]
+        },
+        fallbacks=[]
+    )
+    change_any_day_attendance_handler = ConversationHandler(
+        entry_points=[CommandHandler('changeattendanceanyday', change_any_day_attendance)],
+        states={
+            settings.FIRST: [MessageHandler(Filters.text, change_any_day_attendance_get_day)],
+            settings.SECOND: [MessageHandler(Filters.text, change_any_day_attendance_follow_up)]
         },
         fallbacks=[]
     )
@@ -271,8 +294,11 @@ def main():
 
                     add_users_handler, get_users_handler,
 
-                    get_attendance_handler, change_attendance_handler
+                    get_today_attendance_handler, get_tomorrow_attendance_handler, get_any_day_attendance_handler,
+                    change_today_attendance_handler, change_tomorrow_attendance_handler,
+                    change_any_day_attendance_handler
                     ]
+
     for handler in all_handlers:
         dispatcher.add_handler(handler)
 

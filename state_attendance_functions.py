@@ -56,7 +56,7 @@ def change_tomorrow_attendance_follow_up(update_obj: Update, context: CallbackCo
 def change_any_day_attendance_get_day(update_obj: Update, context: CallbackContext) -> int:
     chat_id, day = get_admin_reply(update_obj, context)
     if not check_valid_datetime(day):
-        update_obj.message.reply_text("Date entered is of an invalid format! ")
+        update_obj.message.reply_text("Date entered in an invalid format")
         return ConversationHandler.END
 
     # Stores the day (as a string) in the settings dictionary
@@ -78,109 +78,7 @@ def change_any_day_attendance_follow_up(update_obj: Update, context: CallbackCon
     return ConversationHandler.END
 
 
-def get_submitted_users_attendance(update_obj: Update, context: CallbackContext) -> int:
-    chat_id, attendance = get_admin_reply(update_obj, context)
-    # First, we split according to \n to get a list
-    attendance_parse = attendance.split('\n')
-    # Next, we split according to ':' and get rid of blank values, and potential error values
-    attendance_parse_two = [attendance.split(':') for attendance in attendance_parse if attendance.strip()
-                            and len(attendance.split(':')) == 2]
-
-    # Get the current group
-    current_group = settings.current_group_id
-
-    # Now, we check the second entry to see how the attendance is keyed in
-    # For all the continues, consider whether we want to send a text to inform the user
-    for entry in attendance_parse_two:
-
-        # First, we check if the user exists
-        with sqlite3.connect('attendance.db') as con:
-            cur = con.cursor()
-            cur.execute(
-                """
-                SELECT id 
-                  FROM users 
-                 WHERE group_id = ? 
-                   AND rank = ?""",
-                (current_group, int(entry[0]))
-            )
-            user_id = cur.fetchall()
-            if not user_id:
-                update_obj.message.reply_text(f"Regarding user {entry[0]}: User does not exist. ")
-                continue
-            user_id = user_id[0][0]
-
-            con.commit()
-
-        # We set the number of days first (for the non-long attendance)
-        num_days = 1
-
-        # Next, we check if it is the long attendance
-        # May want to add a few print statements for debug
-        if 'till' in entry[1]:
-            status, final_date = entry[1].split('till')
-            status = status.strip()
-            final_date = final_date.strip()
-
-            # We get today's date to compare with
-            today = datetime.date.today()
-            final_date = check_valid_datetime(date_to_check=final_date, date_compared=today, after_date=True)
-            if not final_date:
-                update_obj.message.reply_text(f"Regarding user {entry[0]}: Date entered in an invalid format. "
-                                              f"Date must also be after today's date, and less than 2 years in future.")
-                continue
-
-            # Get the number of days
-            num_days = (final_date - today).days + 1  # Need to include today also
-
-            # This is so that it can be split later (for eg: LL --> LL / LL)
-            status = ' / '.join([status, status])
-
-        # Else, if the attendance is listed without '/'
-        elif '/' not in entry[1]:
-            status = ' / '.join([entry[1], entry[1]])
-        else:
-            status = entry[1]
-
-        # This updates the user's attendance for all
-        # Update the attendance of the user
-        with sqlite3.connect('attendance.db') as con:
-            cur = con.cursor()
-            # Gets the values of all
-            status = [value.strip() for value in status.split('/')]
-
-            # You need to update the date to make it correct. It can be either today or tomorrow.
-            # For now, implementation is today. What this does is create one entry for each day, for each
-            # time period. All of them then get updated at once using executemany.
-            attendances_to_update = [(current_group, user_id, j + 1, f'+{i} day', status[j])
-                                     for i in range(num_days) for j in range(len(status))]
-            print(attendances_to_update)
-
-            # Inserts all the values into the table
-            cur.executemany(
-                """
-                INSERT INTO attendance
-                (group_id, user_id, TimePeriod, Date, AttendanceStatus)
-                VALUES (?, ?, ?, date('now', ?), ?)""",
-                attendances_to_update
-            )
-
-            # Save changes
-            con.commit()
-
-        # Update user about success
-        update_obj.message.reply_text(f"User {entry[0]}'s attendance updated.")
-
-    update_obj.message.reply_text("All users' attendance updated.")
-    return ConversationHandler.END
-
-# Stuff to be checked about date
-# If the date is more than 2 years from today's date, reject
-# If the date is before today's date, reject
-# If the date has an invalid month or day or year, reject (use try, except ValueError for datetime?)
-
-
-# Follow up function of get_specific_day_group_attendance
+# Follow-up function of get_specific_day_group_attendance
 def get_specific_day_group_attendance_follow_up(update_obj: Update, context: CallbackContext) -> int:
     chat_id, date = get_admin_reply(update_obj, context)
     # Gets the date in the form of a datetime object
