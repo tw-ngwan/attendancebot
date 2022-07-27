@@ -7,7 +7,8 @@ import sqlite3
 from state_variables import *
 import settings
 import datetime
-from backend_implementations import get_group_members, get_admin_reply, check_admin_privileges, check_valid_datetime
+from backend_implementations import get_group_members, get_admin_reply, check_admin_privileges, check_valid_datetime, \
+    get_day_group_attendance
 
 
 # I need to find a way to record what the attendance of a person is over multiple days, that is track the streak of
@@ -134,3 +135,16 @@ def get_submitted_users_attendance(update_obj: Update, context: CallbackContext)
 # If the date is more than 2 years from today's date, reject
 # If the date is before today's date, reject
 # If the date has an invalid month or day or year, reject (use try, except ValueError for datetime?)
+
+
+# Follow up function of get_specific_day_group_attendance
+def get_specific_day_group_attendance_follow_up(update_obj: Update, context: CallbackContext) -> int:
+    chat_id, date = get_admin_reply(update_obj, context)
+    # Gets the date in the form of a datetime object
+    day_to_check = check_valid_datetime(date)
+    if not day_to_check:
+        update_obj.message.reply_text("Date entered in an invalid format")
+        return ConversationHandler.END
+
+    get_day_group_attendance(update_obj, context, day_to_check)
+    return ConversationHandler.END

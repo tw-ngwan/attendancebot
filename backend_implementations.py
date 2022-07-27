@@ -12,6 +12,9 @@ import datetime
 
 
 # Generates a random password
+import settings
+
+
 def generate_random_password(length=12, iterations=1) -> list[str]:
     """Generates a random password"""
     return [''.join([random.choice(''.join([ascii_uppercase, ascii_lowercase, digits])) for _ in range(length)])
@@ -143,6 +146,19 @@ def check_valid_datetime(date_to_check: str, date_compared: datetime.date=None, 
 
     # If all conditions that have been checked are ok, then return the final_date to be used
     return final_date
+
+
+# Gets group's attendance on a certain day
+def get_day_group_attendance(update_obj: Update, context: CallbackContext, day: datetime.date) -> None:
+    date_string = f"{day.day:02d}{day.month:02d}{day.year:04d}"
+    attendance_message_beginning = [f"Attendance for {date_string}:"]
+    current_group_id = settings.current_group_id
+    if current_group_id is None:
+        update_obj.message.reply_text("Enter a group first with /entergroup!")
+        return None
+    attendance_message_body = get_user_attendance_backend(group_id=current_group_id, date=day)
+    message = '\n'.join(attendance_message_beginning + attendance_message_body)
+    update_obj.message.reply_text(message)
 
 
 # Backend implementation to get user attendance

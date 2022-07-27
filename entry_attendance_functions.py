@@ -8,7 +8,8 @@ import sqlite3
 from state_variables import *
 import settings
 import datetime
-from backend_implementations import get_group_members, get_user_attendance_backend
+from backend_implementations import get_group_members, get_user_attendance_backend, check_admin_privileges, \
+    get_day_group_attendance
 from keyboards import group_users_keyboard
 
 
@@ -20,22 +21,35 @@ from keyboards import group_users_keyboard
 # Make TimePeriod 1-indexed
 def get_today_group_attendance(update_obj: Update, context: CallbackContext) -> int:
     today = datetime.date.today()
-    today_string = f"{today.day:02d}{today.month:02d}{today.year:04d}"
-    attendance_message_beginning = [f"Attendance for {today_string}:"]
-    current_group_id = settings.current_group_id
-    if current_group_id is None:
-        update_obj.message.reply_text("Enter a group first with /entergroup!")
-        return ConversationHandler.END
-    attendance_message_body = get_user_attendance_backend(group_id=current_group_id, date=today)
-    message = '\n'.join(attendance_message_beginning + attendance_message_body)
-    update_obj.message.reply_text(message)
+    get_day_group_attendance(update_obj, context, today)
     return ConversationHandler.END
+
+
+# Gets the attendance of the group for the next day
+def get_tomorrow_group_attendance(update_obj: Update, context: CallbackContext) -> int:
+    tomorrow = datetime.date.today() + datetime.timedelta(days=1)
+    get_day_group_attendance(update_obj, context, tomorrow)
+    return ConversationHandler.END
+
+
+# Gets the attendance of the group on a specific day
+def get_specific_day_group_attendance(update_obj: Update, context: CallbackContext) -> int:
+    update_obj.message.reply_text("Which day's attendance would you like to get? "
+                                  "In your next message, please enter the desired date (and nothing else) in "
+                                  "6-digit form (eg: 210722)")
+    return settings.FIRST
 
 
 # Changes attendance in the group you are in, for today
 # Ok implement two functions: one to change today's attendance, the other to change tomorrow's
 def change_attendance(update_obj: Update, context: CallbackContext) -> int:
     current_group_id = settings.current_group_id
+
+    # Verify that the user is in a group first
+    if current_group_id is None:
+        update_obj.message.reply_text("Enter a group first with /entergroup!")
+        return ConversationHandler.END
+
     update_obj.message.reply_text("State the number of the user(s) whose attendance you want to change, followed "
                                   "by a ':', then their attendance for the day. Type 'OK' to cancel. "
                                   "The number of the user refers to the number next to their names. "
