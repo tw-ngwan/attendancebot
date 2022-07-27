@@ -9,7 +9,7 @@ from state_variables import *
 import settings
 import datetime
 from backend_implementations import get_group_members, get_group_attendance_backend, check_admin_privileges, \
-    get_day_group_attendance
+    reply_non_admin, get_day_group_attendance
 from keyboards import group_users_keyboard
 
 
@@ -44,12 +44,46 @@ def get_specific_day_group_attendance(update_obj: Update, context: CallbackConte
 # Ok implement two functions: one to change today's attendance, the other to change tomorrow's
 def change_attendance(update_obj: Update, context: CallbackContext) -> int:
     current_group_id = settings.current_group_id
+    chat_id = update_obj.message.chat_id
 
     # Verify that the user is in a group first
     if current_group_id is None:
         update_obj.message.reply_text("Enter a group first with /entergroup!")
         return ConversationHandler.END
 
+    # Check that the user is at least member
+    if check_admin_privileges(current_group_id, chat_id) >= 2:
+        reply_non_admin(update_obj, context, "Member")
+        return ConversationHandler.END
+
+    # Give user instructions on how to submit message
+    _change_attendance_send_messages(update_obj, context)
+    return settings.FIRST
+
+
+# Asks question to change attendance of group on any day
+def change_attendance_any_day(update_obj: Update, context: CallbackContext) -> int:
+    current_group_id = settings.current_group_id
+    chat_id = update_obj.message.chat_id
+
+    # Verify that the user is in a group first
+    if current_group_id is None:
+        update_obj.message.reply_text("Enter a group first with /entergroup!")
+        return ConversationHandler.END
+
+    # Check that the user is at least member
+    if check_admin_privileges(current_group_id, chat_id) >= 1:
+        reply_non_admin(update_obj, context, "Admin")
+        return ConversationHandler.END
+
+    update_obj.message.reply_text("Enter the date that you want to change attendance of, in the 6-digit format "
+                                  "(eg: 280722)")
+    return settings.FIRST
+
+
+# The messages to be sent in the change_attendance function
+def _change_attendance_send_messages(update_obj: Update, context: CallbackContext) -> None:
+    # Give user instructions on how to submit message
     update_obj.message.reply_text("State the number of the user(s) whose attendance you want to change, followed "
                                   "by a ':', then their attendance for the day. Type 'OK' to cancel. "
                                   "The number of the user refers to the number next to their names. "
@@ -63,4 +97,4 @@ def change_attendance(update_obj: Update, context: CallbackContext) -> int:
                                   "3: P / OFF \n"
                                   "7: MC till 280822 \n"
                                   "4: OS (Jurong) / MA")
-    return settings.FIRST
+

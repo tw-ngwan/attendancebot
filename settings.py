@@ -2,6 +2,7 @@
 current_group_id = None
 current_group_name = None
 temp_groups = {}
+attendance_date_edit = {}
 
 
 class AttendanceRecord:
@@ -17,10 +18,12 @@ def init():
     global help_message
     global OBSERVER, MEMBER, ADMIN
     global temp_groups
+    global attendance_date_edit
     current_group_id = None
     current_group_name = None
     FIRST, SECOND, THIRD = range(3)
     temp_groups = {}
+    attendance_date_edit = {}
     OBSERVER, MEMBER, ADMIN = "Observer", "Member", "Admin"
     help_message = """
 Here is a walkthrough of what each of the functions will do: 

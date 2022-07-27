@@ -8,7 +8,8 @@ from state_variables import *
 import settings
 import datetime
 from backend_implementations import get_group_members, get_admin_reply, check_admin_privileges, check_valid_datetime, \
-    get_day_group_attendance
+    get_day_group_attendance, change_group_attendance_backend
+from entry_attendance_functions import _change_attendance_send_messages
 
 
 # I need to find a way to record what the attendance of a person is over multiple days, that is track the streak of
@@ -35,6 +36,48 @@ from backend_implementations import get_group_members, get_admin_reply, check_ad
 # What I need to do is first split according to \n, and then find valid rows (rows with input)
 # The ultimate goal is to get a dict of lists (or list of lists)
 # For now, you assume that this is for updating today's attendance. Split this into multiple functions.
+
+
+# Change today's attendance
+def change_today_attendance_follow_up(update_obj: Update, context: CallbackContext) -> int:
+    today = datetime.date.today()
+    change_group_attendance_backend(update_obj, context, today)
+    return ConversationHandler.END
+
+
+# Changes tomorrow's attendance
+def change_tomorrow_attendance_follow_up(update_obj: Update, context: CallbackContext) -> int:
+    tomorrow = datetime.date.today() + datetime.timedelta(days=1)
+    change_group_attendance_backend(update_obj, context, tomorrow)
+    return ConversationHandler.END
+
+
+# Gets the day that the user wants for changing attendance. For change_any_day_attendance
+def change_any_day_attendance_get_day(update_obj: Update, context: CallbackContext) -> int:
+    chat_id, day = get_admin_reply(update_obj, context)
+    if not check_valid_datetime(day):
+        update_obj.message.reply_text("Date entered is of an invalid format! ")
+        return ConversationHandler.END
+
+    # Stores the day (as a string) in the settings dictionary
+    settings.attendance_date_edit[chat_id] = day
+
+    # Give users instructions to send message detailing attendance
+    _change_attendance_send_messages(update_obj, context)
+    return settings.SECOND
+
+
+# Changes the attendance of any day that the user wants
+def change_any_day_attendance_follow_up(update_obj: Update, context: CallbackContext) -> int:
+    chat_id = update_obj.message.chat_id
+    # Gets the day that the user wants from settings, and then deletes it so that there is no duplicate of values
+    day = settings.attendance_date_edit.pop(chat_id)
+    # Converts it into a datetime object
+    day = check_valid_datetime(day)
+    change_group_attendance_backend(update_obj, context, day)
+    return ConversationHandler.END
+
+
 def get_submitted_users_attendance(update_obj: Update, context: CallbackContext) -> int:
     chat_id, attendance = get_admin_reply(update_obj, context)
     # First, we split according to \n to get a list

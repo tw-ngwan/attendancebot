@@ -132,9 +132,12 @@ Here is a walkthrough of what each of the functions will do:
 /changeuserrank: Swaps the ranks of two users (Member)
 
 /editsettings: Edits settings. To be elaborated (Is this needed?) 
-/changeattendance: Changes the attendance status of any group members of group you are currently in (Member)
-/changemyattendance: Changes your attendance (Is this needed?) 
-/getgroupattendance: Returns the attendance status of all group members on that day (Observer)
+/changeattendancetoday: Changes the attendance status of any group members of group you are currently in (Member)
+/changeattendancetomorrow: 
+/changeattendanceanyday: (Admin) 
+/getattendancetoday: Returns the attendance status of all group members on that day (Observer)
+/getattendancetomorrow: 
+/getattendanceanyday: 
 /getuserattendance: Returns the attendance status of a user over a period of time (user-defined) (Member)
 /getallattendance: Returns the attendance status of all group members over a period of time (Member)
 /backdatechangeattendance: Changes the attendance of a user, backdated. Admin Privileges required. (Admin)
@@ -250,7 +253,7 @@ def main():
 
     # Attendance functions
     get_attendance_handler = ConversationHandler(
-        entry_points=[CommandHandler('getgroupattendance', get_today_group_attendance)], states={}, fallbacks=[]
+        entry_points=[CommandHandler('getattendancetoday', get_today_group_attendance)], states={}, fallbacks=[]
     )
     change_attendance_handler = ConversationHandler(
         entry_points=[CommandHandler('changeattendance', change_attendance)],

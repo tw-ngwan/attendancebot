@@ -103,12 +103,20 @@ def check_admin_privileges(chat_id, group_id):
         return roles_dict[roles[0][0]]
 
 
+# Replies to user that they are not admin
+def reply_non_admin(update_obj: Update, context: CallbackContext, role: str="Admin") -> None:
+    update_obj.message.reply_text("You are not qualified to perform this action!")
+    update_obj.message.reply_text(f"You need to be a {role} to perform this action!")
+    return None
+
+
 # Checks if a date given is valid
 def check_valid_datetime(date_to_check: str, date_compared: datetime.date=None, after_date: bool=True):
     """Checks if a date given is valid, and if compared with another date, whether it is also after or before the date
     (User specified)"""
 
     # First, check that it is in the form 'DDMMYY'
+    date_to_check = date_to_check.strip()
     if len(date_to_check) != 6:
         return False
 
@@ -147,9 +155,17 @@ def check_valid_datetime(date_to_check: str, date_compared: datetime.date=None, 
 
 # Gets group's attendance on a certain day
 def get_day_group_attendance(update_obj: Update, context: CallbackContext, day: datetime.date) -> None:
+
+    # Verifies that the user is qualified to call this first
+    chat_id = update_obj.message.chat_id
+    current_group_id = settings.current_group_id
+    if check_admin_privileges(chat_id, current_group_id) >= 3:
+        reply_non_admin(update_obj, context, "Observer")
+        return None
+
+    # Once user is verified, start getting attendance
     date_string = f"{day.day:02d}{day.month:02d}{day.year:04d}"
     attendance_message_beginning = [f"Attendance for {date_string}:"]
-    current_group_id = settings.current_group_id
     if current_group_id is None:
         update_obj.message.reply_text("Enter a group first with /entergroup!")
         return None
@@ -159,6 +175,7 @@ def get_day_group_attendance(update_obj: Update, context: CallbackContext, day: 
 
 
 # Backend implementation to get user attendance
+# Function used in get_day_group_attendance
 def get_group_attendance_backend(group_id: int, date: datetime.date=None):
     """Backend implementation to get the attendance of the user. Key in date as datetime.date object
     (The datetime.date object can be obtained using check_valid_datetime)"""
@@ -254,17 +271,21 @@ def get_group_attendance_backend(group_id: int, date: datetime.date=None):
 # Changes the attendance of users on a specific day
 def change_group_attendance_backend(update_obj: Update, context: CallbackContext, day: datetime.date) -> None:
 
+    # Gets the message that user sends, and cancels if necessary
+    chat_id, message = get_admin_reply(update_obj, context)
+    if message == "OK":
+        update_obj.message.reply_text("Ok, cancelling job now")
+        return None
+
+    # Get the current group
+    current_group = settings.current_group_id
+
     # We compare how far away the day is from today first
     today = datetime.date.today()
     num_days_difference = (day - today).days
 
-    chat_id, message = get_admin_reply(update_obj, context)
-
     # Get the user's instructions in form of list of lists
     parsed_attendance_message = parse_user_change_instructions(message)
-
-    # Get the current group
-    current_group = settings.current_group_id
 
     # Now, we check how the attendance is keyed in, and whether the user to change attendance of exists
     for entry in parsed_attendance_message:
@@ -328,13 +349,6 @@ def change_group_attendance_backend(update_obj: Update, context: CallbackContext
                 WHERE group_id = ? AND user_id = ? AND TimePeriod = ? AND Date = date('now', ?)""",
                 attendances_to_update
             )
-            # cur.executemany(
-            #     """
-            #     INSERT INTO attendance
-            #     (group_id, user_id, TimePeriod, Date, AttendanceStatus)
-            #     VALUES (?, ?, ?, date('now', ?), ?)""",
-            #     attendances_to_update
-            # )
 
             # Save changes
             con.commit()
@@ -346,6 +360,7 @@ def change_group_attendance_backend(update_obj: Update, context: CallbackContext
 
 
 # Splits the user's change group attendance message
+# Function used in change_group_attendance_backend
 def parse_user_change_instructions(message: str):
     # First, we split according to '\n' to get the lines of the message
     message_lines = message.split('\n')
@@ -356,6 +371,7 @@ def parse_user_change_instructions(message: str):
 
 
 # Checks whether a user of a certain rank (integer) in a group exists
+# Function used in change_group_attendance_backend
 def check_user_rank_exists(group_id: int, user_rank: int):
     with sqlite3.connect('attendance.db') as con:
         cur = con.cursor()
