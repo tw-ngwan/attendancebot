@@ -8,7 +8,7 @@ import sqlite3
 from state_variables import *
 import settings
 import datetime
-from backend_implementations import get_group_members, get_user_attendance_backend, check_admin_privileges, \
+from backend_implementations import get_group_members, get_group_attendance_backend, check_admin_privileges, \
     get_day_group_attendance
 from keyboards import group_users_keyboard
 

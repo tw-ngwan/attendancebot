@@ -6,15 +6,12 @@ from telegram.ext import CallbackContext
 from string import ascii_uppercase, ascii_lowercase, digits
 import random
 import sqlite3
-import itertools
 import shelve
 import datetime
-
-
-# Generates a random password
 import settings
 
 
+# Generates a random password
 def generate_random_password(length=12, iterations=1) -> list[str]:
     """Generates a random password"""
     return [''.join([random.choice(''.join([ascii_uppercase, ascii_lowercase, digits])) for _ in range(length)])
@@ -156,13 +153,13 @@ def get_day_group_attendance(update_obj: Update, context: CallbackContext, day: 
     if current_group_id is None:
         update_obj.message.reply_text("Enter a group first with /entergroup!")
         return None
-    attendance_message_body = get_user_attendance_backend(group_id=current_group_id, date=day)
+    attendance_message_body = get_group_attendance_backend(group_id=current_group_id, date=day)
     message = '\n'.join(attendance_message_beginning + attendance_message_body)
     update_obj.message.reply_text(message)
 
 
 # Backend implementation to get user attendance
-def get_user_attendance_backend(group_id: int, date: datetime.date=None):
+def get_group_attendance_backend(group_id: int, date: datetime.date=None):
     """Backend implementation to get the attendance of the user. Key in date as datetime.date object
     (The datetime.date object can be obtained using check_valid_datetime)"""
 
@@ -252,3 +249,127 @@ def get_user_attendance_backend(group_id: int, date: datetime.date=None):
 
     # Returns the body of the attendance message for people who need it
     return attendance_message_body
+
+
+# Changes the attendance of users on a specific day
+def change_group_attendance_backend(update_obj: Update, context: CallbackContext, day: datetime.date) -> None:
+
+    # We compare how far away the day is from today first
+    today = datetime.date.today()
+    num_days_difference = (day - today).days
+
+    chat_id, message = get_admin_reply(update_obj, context)
+
+    # Get the user's instructions in form of list of lists
+    parsed_attendance_message = parse_user_change_instructions(message)
+
+    # Get the current group
+    current_group = settings.current_group_id
+
+    # Now, we check how the attendance is keyed in, and whether the user to change attendance of exists
+    for entry in parsed_attendance_message:
+
+        # First, we check if the user exists
+        user_id = check_user_rank_exists(group_id=current_group, user_rank=int(entry[0]))
+        if not user_id:
+            update_obj.message.reply_text(f"Regarding user {entry[0]}: User does not exist. ")
+            continue
+
+        # We set the number of days first. This will be edited in long attendance (and ignored for others so
+        # value remains)
+        num_days = 1
+
+        # Next, we check what format the attendance is entered in.
+        # First, we check if this is the long attendance.
+        if 'till' in entry[1]:
+            status, final_date = entry[1].split('till')
+            status = status.strip()
+            final_date = final_date.strip()
+
+            final_date = check_valid_datetime(date_to_check=final_date, date_compared=day, after_date=True)
+            if not final_date:
+                update_obj.message.reply_text(f"Regarding user {entry[0]}: Date entered in an invalid format. "
+                                              f"Date must also be after the day's date, "
+                                              f"and less than 2 years in future.")
+                continue
+
+            # Get the number of days
+            num_days = (final_date - day).days + 1  # Need to include the actual day also
+
+            # This is so that it can be split later (for eg: LL --> LL / LL)
+            status = ' / '.join([status, status])
+
+        # Else, if the attendance is listed without '/'
+        elif '/' not in entry[1]:
+            status = ' / '.join([entry[1], entry[1]])
+        else:
+            status = entry[1]
+
+        # This updates the user's attendance for all
+        # Update the attendance of the user
+        with sqlite3.connect('attendance.db') as con:
+            cur = con.cursor()
+            # Gets the values of all
+            status = [value.strip() for value in status.split('/')]
+
+            # You need to update the date to make it correct. It can be either today or tomorrow.
+            # For now, implementation is today. What this does is create one entry for each day, for each
+            # time period. All of them then get updated at once using executemany.
+            attendances_to_update = [(status[j], current_group, user_id, j + 1, f'{i + num_days_difference} day')
+                                     for i in range(num_days) for j in range(len(status))]
+            # print(attendances_to_update)
+
+            # Inserts all the values into the table
+            # This needs to be edited, it should be updating values, not inserting values
+            cur.executemany(
+                """
+                UPDATE attendance
+                SET AttendanceStatus = ? 
+                WHERE group_id = ? AND user_id = ? AND TimePeriod = ? AND Date = date('now', ?)""",
+                attendances_to_update
+            )
+            # cur.executemany(
+            #     """
+            #     INSERT INTO attendance
+            #     (group_id, user_id, TimePeriod, Date, AttendanceStatus)
+            #     VALUES (?, ?, ?, date('now', ?), ?)""",
+            #     attendances_to_update
+            # )
+
+            # Save changes
+            con.commit()
+
+        # Update user about success
+        update_obj.message.reply_text(f"User {entry[0]}'s attendance updated.")
+
+    update_obj.message.reply_text("All users' attendance updated.")
+
+
+# Splits the user's change group attendance message
+def parse_user_change_instructions(message: str):
+    # First, we split according to '\n' to get the lines of the message
+    message_lines = message.split('\n')
+    # Next, we split according to ':' and get rid of blank, or error values
+    parsed_attendance_message = [attendance.split(':') for attendance in message_lines if attendance.strip()
+                                 and len(attendance.split(':')) == 2]
+    return parsed_attendance_message
+
+
+# Checks whether a user of a certain rank (integer) in a group exists
+def check_user_rank_exists(group_id: int, user_rank: int):
+    with sqlite3.connect('attendance.db') as con:
+        cur = con.cursor()
+        cur.execute(
+            """
+            SELECT id 
+              FROM users 
+             WHERE group_id = ? 
+               AND rank = ?""",
+            (group_id, user_rank)
+        )
+        user_id = cur.fetchall()
+        if not user_id:
+            return False
+        user_id = user_id[0][0]
+
+    return user_id
