@@ -54,7 +54,7 @@ def get_submitted_users_attendance(update_obj: Update, context: CallbackContext)
             cur = con.cursor()
             cur.execute(
                 """
-                SELECT user_id 
+                SELECT id 
                   FROM users 
                  WHERE group_id = ? 
                    AND rank = ?""",
@@ -65,6 +65,8 @@ def get_submitted_users_attendance(update_obj: Update, context: CallbackContext)
                 update_obj.message.reply_text(f"Regarding user {entry[0]}: User does not exist. ")
                 continue
             user_id = user_id[0][0]
+
+            con.commit()
 
         # We set the number of days first (for the non-long attendance)
         num_days = 1
@@ -121,15 +123,16 @@ def get_submitted_users_attendance(update_obj: Update, context: CallbackContext)
             # You need to update the date to make it correct. It can be either today or tomorrow.
             # For now, implementation is today. What this does is create one entry for each day, for each
             # time period. All of them then get updated at once using executemany.
-            attendances_to_update = [(current_group, user_id, j + 1, f"date('now', '+{i} day')", status[i])
-                                     for i in range(num_days) for j in range(len(entry[1]))]
+            attendances_to_update = [(current_group, user_id, j + 1, f'+{i} day', status[j])
+                                     for i in range(num_days) for j in range(len(status))]
+            print(attendances_to_update)
 
             # Inserts all the values into the table
             cur.executemany(
                 """
                 INSERT INTO attendance
                 (group_id, user_id, TimePeriod, Date, AttendanceStatus)
-                VALUES (?, ?, ?, ?, ?)""",
+                VALUES (?, ?, ?, date('now', ?), ?)""",
                 attendances_to_update
             )
 
@@ -139,26 +142,8 @@ def get_submitted_users_attendance(update_obj: Update, context: CallbackContext)
         # Update user about success
         update_obj.message.reply_text(f"User {entry[0]}'s attendance updated.")
 
-
-# # Gets the user's attendance, and updates it
-# # Should there be any typos, the bot will just not work. Ask user to update again
-# def update_users_attendance(update_obj: Update, context: CallbackContext) -> int:
-#     # Scenario 2: Half-day LL
-#     if '/' in
-#         "P/OS/MHC"
-#
-#     return settings.FIRST
-
-
-# # Verify which format attendance is in
-# def
-
-
-possible_attendance_formats = """
-LL
-P / LL 
-LL till 260722
-"""
+    update_obj.message.reply_text("All users' attendance updated.")
+    return ConversationHandler.END
 
 # Stuff to be checked about date
 # If the date is more than 2 years from today's date, reject

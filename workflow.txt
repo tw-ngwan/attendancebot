@@ -1,0 +1,15 @@
+Work to do now: 
+
+For users, start implementing delete user functionality 
+Add functionality to change the ranks of users (swaps: top 0, bottom -1)
+Test more to check if invalid input will be accepted for attendance 
+
+Currently, can only change current day's attendance. 
+Add functions to change tmr's, and any other day's attendance. 
+Add admin checks. You have the function already, but not implementing it!
+
+Start implementing functionality to change attendance for any day. 
+
+I just realized something. My update attendance inserts columns for every
+update it does. There should be a check to see if the column already 
+exists first. If not, then update. 

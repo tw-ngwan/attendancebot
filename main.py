@@ -63,9 +63,10 @@ from entry_help_functions import start, user_help
 from entry_group_functions import create_group, enter_group, leave_group, current_group, delete_group, merge_groups, \
     join_group_members, join_existing_group, quit_group, change_group_title
 from entry_user_functions import add_users, get_users
-from entry_attendance_functions import get_group_attendance
-from state_user_functions import store_added_user
+from entry_attendance_functions import get_group_attendance, change_attendance
 from state_group_functions import name_group_title, enter_group_implementation
+from state_user_functions import store_added_user
+from state_attendance_functions import get_submitted_users_attendance
 from telegram.ext import Updater, ConversationHandler, CommandHandler, MessageHandler, Filters
 
 
@@ -251,6 +252,13 @@ def main():
     get_attendance_handler = ConversationHandler(
         entry_points=[CommandHandler('getgroupattendance', get_group_attendance)], states={}, fallbacks=[]
     )
+    change_attendance_handler = ConversationHandler(
+        entry_points=[CommandHandler('changeattendance', change_attendance)],
+        states={
+            settings.FIRST: [MessageHandler(Filters.text, get_submitted_users_attendance)]
+        },
+        fallbacks=[]
+    )
 
     global dispatcher
     all_handlers = [start_handler, help_handler,
@@ -260,56 +268,15 @@ def main():
 
                     add_users_handler, get_users_handler,
 
-                    get_attendance_handler,
+                    get_attendance_handler, change_attendance_handler
                     ]
     for handler in all_handlers:
         dispatcher.add_handler(handler)
 
+    # Start the bot, let it wait for a user command
     updater.start_polling()
 
     updater.idle()
-
-
-
-
-
-
-
-    # # Introducing the necessary conversation handlers
-    # # Start handler handles update, timings_update as well
-    # start_handler = ConversationHandler(
-    #     entry_points=[CommandHandler('start', start), CommandHandler('update', update_preferences),
-    #                   CommandHandler('updatetiming', update_timing)],
-    #     states={
-    #         FIRST: [MessageHandler(Filters.text, get_news_sources)],
-    #         SECOND: [MessageHandler(Filters.text, get_num_articles)],
-    #         THIRD: [MessageHandler(Filters.text, get_frequency)],
-    #
-    #     },
-    #     fallbacks=[]
-    # )
-    # news_update_handler = ConversationHandler(
-    #     entry_points=[CommandHandler('updatenews', update_news)],
-    #     states={
-    #         FIRST: [MessageHandler(Filters.text, get_news_sources_specific)]
-    #     },
-    #     fallbacks=[])
-    # help_handler = ConversationHandler(entry_points=[CommandHandler('help', user_help)], states={}, fallbacks=[])
-    # exit_handler = ConversationHandler(entry_points=[CommandHandler('exit', exit_function)], states={}, fallbacks=[])
-    # quit_handler = ConversationHandler(entry_points=[CommandHandler('quit', quit_bot)], states={}, fallbacks=[])
-    #
-    # # Adds the conversation handlers to the dispatchers
-    # global dispatcher
-    # dispatcher.add_handler(start_handler)
-    # dispatcher.add_handler(news_update_handler)
-    # dispatcher.add_handler(help_handler)
-    # dispatcher.add_handler(exit_handler)
-    # dispatcher.add_handler(quit_handler)
-    #
-    # updater.start_polling()
-    #
-    # updater.idle()
-    pass
 
 
 if __name__ == "__main__":

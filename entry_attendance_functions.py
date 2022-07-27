@@ -23,19 +23,22 @@ def get_group_attendance(update_obj: Update, context: CallbackContext) -> int:
     today_string = f"{today.day:02d}{today.month:02d}{today.year:04d}"
     attendance_message_beginning = [f"Attendance for {today_string}:"]
     current_group_id = settings.current_group_id
+    if current_group_id is None:
+        update_obj.message.reply_text("Enter a group first with /entergroup!")
+        return ConversationHandler.END
     # Gets all users
     with sqlite3.connect('attendance.db') as con:
         cur = con.cursor()
 
-        # Gets the attendance of the non-present people
+        # Gets the attendance of the non-present people for today
         cur.execute(
             """
             SELECT users.id, users.Name, TimePeriod, AttendanceStatus 
               FROM attendance
               JOIN users 
-               ON users.id = attendance.users_id 
-             WHERE Date = date('now', '+1 day') 
-               AND attendance.users_id 
+               ON users.id = attendance.user_id 
+             WHERE Date = date('now')
+               AND attendance.user_id 
                 IN (
                     SELECT id FROM users WHERE group_id = ?
             )
@@ -43,6 +46,7 @@ def get_group_attendance(update_obj: Update, context: CallbackContext) -> int:
             (current_group_id, )
         )
         group_attendance = cur.fetchall()
+        print(group_attendance)
         # Gets the number of time periods to be updated per day
         cur.execute("""SELECT NumDailyReports FROM groups WHERE id = ?""", (current_group_id, ))
         num_daily_reports = cur.fetchall()[0][0]
@@ -58,14 +62,17 @@ def get_group_attendance(update_obj: Update, context: CallbackContext) -> int:
 
         # Gets the attendance of the remaining people
         all_members = get_group_members(current_group_id)
+        print(all_members)
         id_name_dict = {member[0]: member[1] for member in all_members}
 
         # Generates the message for the attendance of the remaining people
         attendance_message_body = []
         for i, user_id in enumerate(id_name_dict.keys()):
             if user_id in group_attendance_dict:
+                # Check if both are the same, if same, then no need the slash, but say till when.
                 attendance_message_body.append(''.join([str(i + 1), ') ', group_attendance_dict[user_id][0], ' - ',
                                                         ' / '.join(group_attendance_dict[user_id][1])]))
+                "https://stackoverflow.com/questions/44056555/find-longest-streak-in-sqlite"  # Identifying till when
             else:
                 attendance_message_body.append(''.join([str(i + 1), ') ', id_name_dict[user_id], ' - P']))
                 # Also another problem: The first one, if only half a day got issue, then the other half a day won't
@@ -74,8 +81,8 @@ def get_group_attendance(update_obj: Update, context: CallbackContext) -> int:
                 # Remember to add to the SQL table
 
         # cur.execute("""SELECT Name FROM users WHERE group_id = ?""", (current_group_id,))
-        names = [data[0] for data in cur.fetchall()]
-    attendance_message_body = [''.join([str(i + 1), ') ', names[i], ' - P']) for i in range(len(names))]
+    #     names = [data[0] for data in cur.fetchall()]
+    # attendance_message_body = [''.join([str(i + 1), ') ', names[i], ' - P']) for i in range(len(names))]
 
     message = '\n'.join(attendance_message_beginning + attendance_message_body)
     update_obj.message.reply_text(message)
