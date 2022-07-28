@@ -3,3 +3,8 @@ Work to do now:
 For users, start implementing delete user functionality 
 Add functionality to change the ranks of users (swaps: top 0, bottom -1)
 Test more to check if invalid input will be accepted for attendance 
+
+
+I have added weekend check functionality, but I probably need to do 
+something to make it more versatile (that is, select the days that you 
+want). This will require a list of possible days 

@@ -3,12 +3,11 @@ Responds to messages and stores the messages given """
 
 from telegram import Update
 from telegram.ext import CallbackContext, ConversationHandler
-import sqlite3
-from state_variables import *
 import settings
 import datetime
 from backend_implementations import get_group_members, get_admin_reply, check_admin_privileges, check_valid_datetime, \
-    get_day_group_attendance, change_group_attendance_backend
+    get_day_group_attendance, change_group_attendance_backend, get_intended_users, get_single_user_attendance_backend, \
+    convert_rank_to_id
 from entry_attendance_functions import _change_attendance_send_messages
 
 
@@ -87,5 +86,73 @@ def get_specific_day_group_attendance_follow_up(update_obj: Update, context: Cal
         update_obj.message.reply_text("Date entered in an invalid format")
         return ConversationHandler.END
 
+    # Check that it is a weekday
+    if day_to_check.weekday() > 4:
+        update_obj.message.reply_text("Date is a weekend!")
+        return ConversationHandler.END
+
     get_day_group_attendance(update_obj, context, day_to_check)
     return ConversationHandler.END
+
+
+# Gets the attendance of users over the past 30 days
+def get_user_attendance_month_follow_up(update_obj: Update, context: CallbackContext) -> int:
+    chat_id, user_text = get_admin_reply(update_obj, context)
+
+    # Gets the end and start dates
+    end_date = datetime.date.today()
+    start_date = datetime.date.today() - datetime.timedelta(days=30)
+
+    # Sends all the attendance messages, after verification
+    _get_user_attendance_process(update_obj, context, user_text, start_date, end_date)
+    return ConversationHandler.END
+
+
+# Gets the attendance of users over an arbitrary period of time
+def get_user_attendance_arbitrary_follow_up(update_obj: Update, context: CallbackContext) -> int:
+    chat_id, admin_instructions = get_admin_reply(update_obj, context)
+    try:
+        user_text, start_date, end_date = admin_instructions.split('\n')
+    except ValueError:
+        update_obj.message.reply_text("Users entered in an incorrect format! Refer to above to see how to "
+                                      "enter users and dates!")
+        return ConversationHandler.END
+
+    # Gets the dates that the admin wants, and verifies that they are valid first.
+    today = datetime.date.today()
+    end_date = check_valid_datetime(date_to_check=end_date, date_compared=today, after_date=True)
+    if not end_date:
+        update_obj.message.reply_text("End date entered incorrectly! Refer to above to see how to enter dates! "
+                                      "The end date must be today or before. ")
+        return ConversationHandler.END
+
+    start_date = check_valid_datetime(date_to_check=start_date, date_compared=end_date, after_date=False)
+    if not start_date:
+        update_obj.message.reply_text("Start date entered incorrectly! Refer to above to see how to enter dates! "
+                                      "The start date must be before the end date. ")
+        return ConversationHandler.END
+
+    # Sends all the attendance messages, after verification
+    _get_user_attendance_process(update_obj, context, user_text, start_date, end_date)
+    return ConversationHandler.END
+
+
+# The backend process for getting attendance. Implemented by both get_user_attendance functions.
+def _get_user_attendance_process(update_obj: Update, context: CallbackContext, user_text: str,
+                                 start_date: datetime.date, end_date: datetime.date) -> bool:
+    current_group = settings.current_group_id
+    users = get_intended_users(user_text, current_group)
+    if not users:
+        update_obj.message.reply_text("Users not entered correctly!")
+        return False
+
+    # Gets an attendance message for each user
+    for user in users:
+        # Gets the user_id from the rank
+        user_id = convert_rank_to_id(current_group, user)
+        attendance_message_body = get_single_user_attendance_backend(current_group, user_id, start_date, end_date)
+        update_obj.message.reply_text('\n'.join(attendance_message_body))
+
+    # Update that everything is done
+    update_obj.message.reply_text("All users' attendance have been retrieved")
+    return True

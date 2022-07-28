@@ -4,8 +4,6 @@ Old file, change ALL functions here (just storing old NewsBot functions)"""
 
 from telegram import Update
 from telegram.ext import CallbackContext, ConversationHandler
-import sqlite3
-from state_variables import *
 import settings
 import datetime
 from backend_implementations import get_group_members, get_group_attendance_backend, check_admin_privileges, \
@@ -27,7 +25,10 @@ def get_today_group_attendance(update_obj: Update, context: CallbackContext) -> 
 
 # Gets the attendance of the group for the next day
 def get_tomorrow_group_attendance(update_obj: Update, context: CallbackContext) -> int:
+    # Gets the next weekday
     tomorrow = datetime.date.today() + datetime.timedelta(days=1)
+    while tomorrow.weekday() > 4:
+        tomorrow += datetime.timedelta(days=1)
     get_day_group_attendance(update_obj, context, tomorrow)
     return ConversationHandler.END
 
@@ -37,6 +38,26 @@ def get_any_day_group_attendance(update_obj: Update, context: CallbackContext) -
     update_obj.message.reply_text("Which day's attendance would you like to get? "
                                   "In your next message, please enter the desired date (and nothing else) in "
                                   "6-digit form (eg: 210722)")
+    return settings.FIRST
+
+
+# Gets the attendance of a user over the past month
+# Questions you first need to answer: What period of time? How do you define it? Through another question?
+def get_user_attendance_month(update_obj: Update, context: CallbackContext) -> int:
+    update_obj.message.reply_text("Key in the numbers of the users who you want to get the attendance of, each "
+                                  "separated by a space. (Eg: 3 4 6)")
+    return settings.FIRST
+
+
+# Gets the attendance of a user over an arbitrary period of time
+def get_user_attendance_arbitrary(update_obj: Update, context: CallbackContext) -> int:
+    update_obj.message.reply_text("Key in the numbers of the users who you want to get the attendance of, each "
+                                  "separated by a space in the first row. Key in the start date in 6-digit form "
+                                  "in the second row, and the end date in the third row (both inclusive). Here's an "
+                                  "example of a message that works: ")
+    update_obj.message.reply_text("3 4 6 \n"
+                                  "260622\n"
+                                  "030822")
     return settings.FIRST
 
 

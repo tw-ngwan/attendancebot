@@ -111,7 +111,7 @@ def reply_non_admin(update_obj: Update, context: CallbackContext, role: str = "A
     return None
 
 
-# Checks if a date given is valid
+# Checks if a date given is valid. When checking after or before, inclusive of the current day
 def check_valid_datetime(date_to_check: str, date_compared: datetime.date = None, after_date: bool = True):
     """Checks if a date given is valid, and if compared with another date, whether it is also after or before the date
     (User specified)"""
@@ -177,7 +177,7 @@ def get_day_group_attendance(update_obj: Update, context: CallbackContext, day: 
         return None
 
     # Once user is verified, start getting attendance
-    date_string = f"{day.day:02d}{day.month:02d}{day.year:04d}"
+    date_string = f"{day.day:02d}{day.month:02d}{day.year:04d}"  # day.year[2:]:04d
     attendance_message_beginning = [f"Attendance for {date_string}:"]
     if current_group_id is None:
         update_obj.message.reply_text("Enter a group first with /entergroup!")
@@ -295,10 +295,10 @@ def get_group_attendance_backend(group_id: int, date: datetime.date = None):
                         print(date_parameters)
                         final_date, attendance_status, rungroup = date_parameters[0]
                         # print(final_date, attendance_status)
-                        year, month, day = final_date.split('-')
+                        final_date_representation = represent_date(final_date)
                         assert attendance_status == group_attendance_dict[user_id][1][0]
                         attendance_message_body.append(''.join([str(i + 1), ') ', id_name_dict[user_id], ' - ',
-                                                                attendance_status, ' till ', day, month, year]))
+                                                                attendance_status, ' till ', final_date_representation]))
                         attendance_status_dict[attendance_status] += 1
 
                 # If both statuses are different, then need the slash
@@ -323,6 +323,7 @@ def get_group_attendance_backend(group_id: int, date: datetime.date = None):
                 attendance_status_dict['P'] += 1
 
         # Adding the attendances of all the present users
+        # I think you may need to edit this to exclude weekends. Wait probably not, I should edit somewhere else
         users_to_add = [(group_id, user, i + 1, date_message) for user in non_added_attendance_ids
                         for i in range(num_daily_reports)]
         cur.executemany(
@@ -420,8 +421,10 @@ def change_group_attendance_backend(update_obj: Update, context: CallbackContext
             # For now, implementation is today. What this does is create one entry for each day, for each
             # time period. All of them then get updated at once using executemany.
             # This implementation can potentially be improved
+            # Add functionality to only insert if the days are not weekends; this has to be done in Python not SQLite
             attendances_to_update = [(current_group, user_id, j + 1, f'{i + num_days_difference} day',
-                                      status[j], status[j]) for i in range(num_days) for j in range(len(status))]
+                                      status[j], status[j]) for i in range(num_days) for j in range(len(status))
+                                     if (day + datetime.timedelta(days=i)).weekday() <= 4]
             # print(attendances_to_update)
 
             # Inserts all the values into the table
@@ -476,3 +479,117 @@ def check_user_rank_exists(group_id: int, user_rank: int):
         user_id = user_id[0][0]
 
     return user_id
+
+
+# Gets user's attendance over the past month
+# If don't have, will assume that get attendance of the past month
+def get_single_user_attendance_backend(group_id, user_id, start_date: datetime.date, end_date: datetime.date):
+
+    with sqlite3.connect('attendance.db') as con:
+        cur = con.cursor()
+        cur.execute(
+            """
+            SELECT TimePeriod, Date, AttendanceStatus
+              FROM attendance
+             WHERE group_id = ? 
+               AND user_id = ? 
+               AND Date >= ? 
+               AND Date <= ?
+             ORDER BY Date, TimePeriod 
+            """,
+            (group_id, user_id, start_date, end_date)
+
+        )
+        # This will be a list of tuples: (TimePeriod, Date, AttendanceStatus)
+        user_statuses = cur.fetchall()
+
+        cur.execute(
+            """
+            SELECT NumDailyReports
+              FROM groups
+             WHERE id = ?
+             """,
+            (group_id, )
+        )
+
+        num_daily_reports = cur.fetchall()[0][0]
+
+        # # Number of days of attendance gotten
+        # num_days = (end_date - start_date).days
+
+        # Data structure: Dictionary of lists. {Date: [Status1, Status2, ...]}
+        user_statuses_revamped = {user_statuses[i][1]: [user_statuses[i + k][2] for k in range(num_daily_reports)]
+                                  for i in range(0, len(user_statuses), num_daily_reports)}
+
+        # Dictionary to check summary. Only add if TimePeriod = 1
+        user_attendance_summary = defaultdict(int)
+        for status in user_statuses:
+            if status[0] == 1:
+                user_attendance_summary[status[2]] += 1
+
+        # Summary message provided
+        attendance_message_body = ["Summary:", f"Present: {user_attendance_summary['P']}", ""]
+        attendance_message_body += [f"{att_status}: {user_attendance_summary[att_status]}"
+                                    for att_status in user_attendance_summary if att_status != 'P']
+        attendance_message_body.append("")
+
+        # Detailed attendance: Adding attendance for each day of the month
+        for date in user_statuses_revamped:
+            statuses = user_statuses_revamped[date]
+            attendance_to_add = [represent_date(date), ": "]
+            # If all statuses are the same
+            if len(set(statuses)) == 1:
+                attendance_to_add.append(user_statuses_revamped[date][0])
+            else:
+                attendance_to_add.append(' / '.join(user_statuses_revamped[date]))
+
+            attendance_message_body.append(''.join(attendance_to_add))
+        #
+        # attendance_message_body += [''.join([represent_date(date), ": ", ' / '.join(user_statuses_revamped[date])])
+        #                             for date in user_statuses_revamped]
+
+        return attendance_message_body
+
+
+# Represents date obtained from a SQLite server
+def represent_date(date_str: str) -> str:
+    year, month, day = date_str.split('-')
+    year = year[2:]
+    new_date = ''.join([day, month, year])
+    return new_date
+
+
+# Gets the users that the admin wants
+def get_intended_users(user_string: str, group_id: int=None):
+
+    # We first split the user_string, but must test if the input is valid
+    try:
+        users = map(int, user_string.split())
+    except ValueError:
+        return False
+
+    group_size = float("inf")
+
+    # Next, if there is a group_id provided, we check that all inputs provided are less than the group size
+    if group_id is not None:
+        # Next, we check that all users are of a valid input, that is their indices exist, and are smaller than group size.
+        with sqlite3.connect('attendance.db') as con:
+            cur = con.cursor()
+            cur.execute(
+                """SELECT COUNT(*) FROM groups WHERE id = ?""", (group_id, )
+            )
+            group_size = cur.fetchall()[0][0]
+
+    # We check that all the users are valid with this condition: If valid, return users, else, return False.
+    return users if min([(1 <= user <= group_size) and type(user) == int for user in users]) else False
+
+
+# Converts user rank into user_id
+def convert_rank_to_id(group_id, user_rank) -> int:
+    with sqlite3.connect('attendance.db') as con:
+        cur = con.cursor()
+        cur.execute(
+            """SELECT id FROM users WHERE group_id = ? AND user_rank = ?""", (group_id, user_rank)
+        )
+        result = cur.fetchall()[0][0]
+        return result if result else 0

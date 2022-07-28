@@ -64,11 +64,14 @@ from entry_group_functions import create_group, enter_group, leave_group, curren
     join_group_members, join_existing_group, quit_group, change_group_title
 from entry_user_functions import add_users, get_users
 from entry_attendance_functions import get_today_group_attendance, get_tomorrow_group_attendance, \
-    get_any_day_group_attendance, change_attendance, change_any_day_attendance
+    get_any_day_group_attendance, change_attendance, change_any_day_attendance, \
+    get_user_attendance_month, get_user_attendance_arbitrary
 from state_group_functions import name_group_title, enter_group_implementation
 from state_user_functions import store_added_user
 from state_attendance_functions import change_today_attendance_follow_up, change_tomorrow_attendance_follow_up, \
-    change_any_day_attendance_get_day, change_any_day_attendance_follow_up, get_specific_day_group_attendance_follow_up
+    change_any_day_attendance_get_day, change_any_day_attendance_follow_up, \
+    get_specific_day_group_attendance_follow_up, get_user_attendance_month_follow_up, \
+    get_user_attendance_arbitrary_follow_up
 from telegram.ext import Updater, ConversationHandler, CommandHandler, MessageHandler, Filters
 
 
@@ -140,9 +143,9 @@ Here is a walkthrough of what each of the functions will do:
 /getattendancetoday: Returns the attendance status of all group members on that day (Observer)
 /getattendancetomorrow: 
 /getattendanceanyday: 
-/getuserattendance: Returns the attendance status of a user over a period of time (user-defined) (Member)
-/getallattendance: Returns the attendance status of all group members over a period of time (Member)
-/backdatechangeattendance: Changes the attendance of a user, backdated. Admin Privileges required. (Admin)
+/getuserattendancemonth: Returns the attendance status of a user over a period of time (user-defined) (Member)
+/getuserattendancearbitrary: (Member)
+/backdatechangeattendance: Changes the attendance of a user, backdated. Admin Privileges required. (Admin) (I think not needed)
 
 /stop: Stops the bot from running. 
 
@@ -267,6 +270,20 @@ def main():
         },
         fallbacks=[]
     )
+    get_user_attendance_month_handler = ConversationHandler(
+        entry_points=[CommandHandler('getuserattendancemonth', get_user_attendance_month)],
+        states={
+            settings.FIRST: [MessageHandler(Filters.text, get_user_attendance_month_follow_up)]
+        },
+        fallbacks=[]
+    )
+    get_user_attendance_arbitrary_handler = ConversationHandler(
+        entry_points=[CommandHandler('getuserattendancearbitrary', get_user_attendance_arbitrary)],
+        states={
+            settings.FIRST: [MessageHandler(Filters.text, get_user_attendance_arbitrary_follow_up)]
+        },
+        fallbacks=[]
+    )
     change_today_attendance_handler = ConversationHandler(
         entry_points=[CommandHandler('changeattendancetoday', change_attendance)],
         states={
@@ -299,6 +316,7 @@ def main():
                     add_users_handler, get_users_handler,
 
                     get_today_attendance_handler, get_tomorrow_attendance_handler, get_any_day_attendance_handler,
+                    get_user_attendance_month_handler, get_user_attendance_arbitrary_handler,
                     change_today_attendance_handler, change_tomorrow_attendance_handler,
                     change_any_day_attendance_handler
                     ]
