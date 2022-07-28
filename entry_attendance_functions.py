@@ -83,6 +83,7 @@ def change_any_day_attendance(update_obj: Update, context: CallbackContext) -> i
 
 # The messages to be sent in the change_attendance function
 def _change_attendance_send_messages(update_obj: Update, context: CallbackContext) -> None:
+
     # Give user instructions on how to submit message
     update_obj.message.reply_text("State the number of the user(s) whose attendance you want to change, followed "
                                   "by a ':', then their attendance for the day. Type 'OK' to cancel. "

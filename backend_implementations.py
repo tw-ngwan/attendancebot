@@ -134,11 +134,13 @@ def check_valid_datetime(date_to_check: str, date_compared: datetime.date=None, 
     except ValueError:
         return False
 
-    # If there is a date to be compared to,
+    # If there is a date to be compared to, check how the dates are related
     if date_compared is not None:
 
         # We compare if the final date is after or before the date that you want to compare
-        if final_date > date_compared != after_date and final_date != date_compared:
+        if (final_date > date_compared) != after_date and final_date != date_compared:
+            # print(final_date, date_compared, after_date, final_date > date_compared)
+            # print("Condition not satisfied")
             return False
 
         # Next, we compare if the date is within 730 days (2 years)
@@ -146,7 +148,13 @@ def check_valid_datetime(date_to_check: str, date_compared: datetime.date=None, 
 
         # We already know that date_compared's relation (bigger or smaller) to final_date is correct
         # So we just need to check that it is within this range
-        if not final_date - two_years <= date_compared <= final_date + two_years:
+        # Let's say final_date > date_compared. Want to ensure that it is within 2 years of date_compared
+        # So date_compared + two_years > final_date
+        # Let's say final_date < date_compared. Want to ensure that it is within 2 years.
+        # So date_compared - two_years < final_date
+        # So the final condition should be: date_compared - two_years <= final_date <= date_compared + two_years
+        if not (date_compared - two_years) <= final_date <= (date_compared + two_years):
+            # print(f"Date compared: {date_compared}, final_date: {final_date}")
             return False
 
     # If all conditions that have been checked are ok, then return the final_date to be used
@@ -238,6 +246,25 @@ def get_group_attendance_backend(group_id: int, date: datetime.date=None):
         for i, user_id in enumerate(id_name_dict.keys()):
             if user_id in group_attendance_dict:
                 # Check if both are the same, if same, then no need the slash, but say till when.
+
+                # # Checks if all attendances of a day is the same
+                # if len(set(group_attendance_dict[user_id][1])) == 1:
+                #     # If present, then just use the regular P message
+                #     if group_attendance_dict[user_id][1][0] == 'P':
+                #         attendance_message_body.append(''.join([str(i + 1), ') ', id_name_dict[user_id], ' - P']))
+                #     else:
+                #
+                #     # Find out when the status is until
+                #     pass
+                #
+                #
+                #
+                # I think the final message that I need to give would be something along these lines:
+                # First, I track between two entries, whether they are the same, in
+                # an ORDERED TABLE by date, where date later than day compared.
+                # If they are not the same, then break immediately. Else, continue
+                # Must also check the condition that that date is the latest date. So if no, max rungroup?
+                # See https://www.sqlteam.com/articles/detecting-runs-or-streaks-in-your-data
                 attendance_message_body.append(''.join([str(i + 1), ') ', group_attendance_dict[user_id][0], ' - ',
                                                         ' / '.join(group_attendance_dict[user_id][1])]))
                 "https://stackoverflow.com/questions/44056555/find-longest-streak-in-sqlite"  # Identifying till when
@@ -279,6 +306,9 @@ def change_group_attendance_backend(update_obj: Update, context: CallbackContext
 
     # Get the current group
     current_group = settings.current_group_id
+
+    # First, we need to get the group's attendance. This helps to fill our database before we perform updates.
+    get_group_attendance_backend(current_group, day)
 
     # We compare how far away the day is from today first
     today = datetime.date.today()
@@ -337,17 +367,21 @@ def change_group_attendance_backend(update_obj: Update, context: CallbackContext
             # You need to update the date to make it correct. It can be either today or tomorrow.
             # For now, implementation is today. What this does is create one entry for each day, for each
             # time period. All of them then get updated at once using executemany.
-            attendances_to_update = [(status[j], current_group, user_id, j + 1, f'{i + num_days_difference} day')
-                                     for i in range(num_days) for j in range(len(status))]
+            # This implementation can potentially be improved
+            attendances_to_update = [(current_group, user_id, j + 1, f'{i + num_days_difference} day',
+                                      status[j], status[j]) for i in range(num_days) for j in range(len(status))]
             # print(attendances_to_update)
 
             # Inserts all the values into the table
             # This needs to be edited, it should be updating values, not inserting values
             cur.executemany(
                 """
-                UPDATE attendance
-                SET AttendanceStatus = ? 
-                WHERE group_id = ? AND user_id = ? AND TimePeriod = ? AND Date = date('now', ?)""",
+                INSERT INTO attendance
+                (group_id, user_id, TimePeriod, Date, AttendanceStatus)
+                VALUES (?, ?, ?, date('now', ?), ?)
+                ON CONFLICT(group_id, user_id, TimePeriod, Date) 
+                DO UPDATE SET AttendanceStatus = ?
+                """,
                 attendances_to_update
             )
 

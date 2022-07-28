@@ -84,3 +84,22 @@ AdminPassword       TEXT NOT NULL,
 SELECT COUNT(*) 
   FROM users
  WHERE users.group_id = ?
+
+
+
+// Trial of updating attendance multiday 
+                IF EXISTS(
+                    SELECT * FROM attendance WHERE group_id = ? AND user_id = ? 
+                       AND TimePeriod = ? AND Date = date('now', ?)
+                )
+                    BEGIN
+                        UPDATE attendance
+                        SET AttendanceStatus = ? 
+                        WHERE group_id = ? AND user_id = ? AND TimePeriod = ? AND Date = date('now', ?)
+                    END
+                ELSE
+                    BEGIN
+                        INSERT INTO attendance
+                        (AttendanceStatus, group_id, user_id, TimePeriod, Date)
+                        VALUES (?, ?, ?, ?, date('now', ?)
+                    END
