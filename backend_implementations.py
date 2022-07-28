@@ -4,6 +4,7 @@
 from telegram import Update
 from telegram.ext import CallbackContext
 from string import ascii_uppercase, ascii_lowercase, digits
+from collections import defaultdict
 import random
 import sqlite3
 import shelve
@@ -53,7 +54,7 @@ def get_admin_groups(chat_id):
                 ON admins.group_id = groups.id 
              WHERE admins.chat_id = ?
             """,
-            (chat_id, )
+            (chat_id,)
         )
         user_groups = cur.fetchall()
 
@@ -74,7 +75,7 @@ def get_group_members(group_id):
             SELECT id, Name FROM users
              WHERE group_id = ?
             """,
-            (group_id, )
+            (group_id,)
         )
         all_ids = cur.fetchall()
     return all_ids
@@ -104,14 +105,14 @@ def check_admin_privileges(chat_id, group_id):
 
 
 # Replies to user that they are not admin
-def reply_non_admin(update_obj: Update, context: CallbackContext, role: str="Admin") -> None:
+def reply_non_admin(update_obj: Update, context: CallbackContext, role: str = "Admin") -> None:
     update_obj.message.reply_text("You are not qualified to perform this action!")
     update_obj.message.reply_text(f"You need to be a {role} to perform this action!")
     return None
 
 
 # Checks if a date given is valid
-def check_valid_datetime(date_to_check: str, date_compared: datetime.date=None, after_date: bool=True):
+def check_valid_datetime(date_to_check: str, date_compared: datetime.date = None, after_date: bool = True):
     """Checks if a date given is valid, and if compared with another date, whether it is also after or before the date
     (User specified)"""
 
@@ -163,10 +164,14 @@ def check_valid_datetime(date_to_check: str, date_compared: datetime.date=None, 
 
 # Gets group's attendance on a certain day
 def get_day_group_attendance(update_obj: Update, context: CallbackContext, day: datetime.date) -> None:
-
     # Verifies that the user is qualified to call this first
     chat_id = update_obj.message.chat_id
     current_group_id = settings.current_group_id
+
+    if current_group_id is None:
+        update_obj.message.reply_text("Enter a group first with /entergroup!")
+        return None
+
     if check_admin_privileges(chat_id, current_group_id) >= 3:
         reply_non_admin(update_obj, context, "Observer")
         return None
@@ -177,14 +182,15 @@ def get_day_group_attendance(update_obj: Update, context: CallbackContext, day: 
     if current_group_id is None:
         update_obj.message.reply_text("Enter a group first with /entergroup!")
         return None
-    attendance_message_body = get_group_attendance_backend(group_id=current_group_id, date=day)
-    message = '\n'.join(attendance_message_beginning + attendance_message_body)
+    attendance_message_body, attendance_message_summary = get_group_attendance_backend(current_group_id, day)
+    message = '\n'.join(attendance_message_beginning + ['\n'] + attendance_message_summary +
+                        ['\n'] + attendance_message_body)
     update_obj.message.reply_text(message)
 
 
 # Backend implementation to get user attendance
 # Function used in get_day_group_attendance
-def get_group_attendance_backend(group_id: int, date: datetime.date=None):
+def get_group_attendance_backend(group_id: int, date: datetime.date = None):
     """Backend implementation to get the attendance of the user. Key in date as datetime.date object
     (The datetime.date object can be obtained using check_valid_datetime)"""
 
@@ -241,21 +247,66 @@ def get_group_attendance_backend(group_id: int, date: datetime.date=None):
         # Create a list to see the ids of people whose attendance are not added yet
         non_added_attendance_ids = []
 
+        # Gets a summary of the attendance statuses of the entire group
+        attendance_status_dict = defaultdict(int)
+
         # Generates the message for the attendance of the remaining people
         attendance_message_body = []
         for i, user_id in enumerate(id_name_dict.keys()):
             if user_id in group_attendance_dict:
-                # Check if both are the same, if same, then no need the slash, but say till when.
 
-                # # Checks if all attendances of a day is the same
-                # if len(set(group_attendance_dict[user_id][1])) == 1:
-                #     # If present, then just use the regular P message
-                #     if group_attendance_dict[user_id][1][0] == 'P':
-                #         attendance_message_body.append(''.join([str(i + 1), ') ', id_name_dict[user_id], ' - P']))
-                #     else:
-                #
-                #     # Find out when the status is until
-                #     pass
+                # Check if both are the same, if same, then no need the slash, but say till when.
+                if len(set(group_attendance_dict[user_id][1])) == 1:
+                    # If present, then just use the regular P message
+                    if group_attendance_dict[user_id][1][0] == 'P':
+                        attendance_message_body.append(''.join([str(i + 1), ') ', id_name_dict[user_id], ' - P']))
+                        attendance_status_dict['P'] += 1
+
+                    # If not present, find the final date of the attendance
+                    else:
+
+                        # How this query works
+                        # The query in brackets finds the number of attendance statuses that are different from
+                        # statuses of the days before, for the user and group in question.
+                        # Afterwards, to get the latest date, we select those with zero different statuses compared
+                        # with the previous days (starting from day 0), and select the latest date.
+                        cur.execute(
+                            """
+                            SELECT Date, AttendanceStatus, (
+                                SELECT COUNT(*) FROM attendance A
+                                WHERE A.AttendanceStatus <> AT.AttendanceStatus 
+                                AND A.Date <= AT.Date
+                                AND A.Date >= date('now', ?)
+                                AND A.user_id = AT.user_id 
+                                AND A.group_id = AT.group_id 
+                            ) 
+                            AS RunGroup 
+                            FROM attendance AT
+                            WHERE user_id = ? 
+                            AND group_id = ?
+                            AND Date >= date('now', ?) 
+                            AND RunGroup = 0
+                            ORDER BY Date DESC 
+                            LIMIT 1
+                            """,
+                            (date_message, user_id, group_id, date_message)
+                        )
+                        date_parameters = cur.fetchall()
+                        print(date_parameters)
+                        final_date, attendance_status, rungroup = date_parameters[0]
+                        # print(final_date, attendance_status)
+                        year, month, day = final_date.split('-')
+                        assert attendance_status == group_attendance_dict[user_id][1][0]
+                        attendance_message_body.append(''.join([str(i + 1), ') ', id_name_dict[user_id], ' - ',
+                                                                attendance_status, ' till ', day, month, year]))
+                        attendance_status_dict[attendance_status] += 1
+
+                # If both statuses are different, then need the slash
+                else:
+                    attendance_message_body.append(''.join([str(i + 1), ') ', group_attendance_dict[user_id][0], ' - ',
+                                                            ' / '.join(group_attendance_dict[user_id][1])]))
+                    attendance_status_dict[group_attendance_dict[user_id][1][0]] += 1
+
                 #
                 #
                 #
@@ -265,16 +316,11 @@ def get_group_attendance_backend(group_id: int, date: datetime.date=None):
                 # If they are not the same, then break immediately. Else, continue
                 # Must also check the condition that that date is the latest date. So if no, max rungroup?
                 # See https://www.sqlteam.com/articles/detecting-runs-or-streaks-in-your-data
-                attendance_message_body.append(''.join([str(i + 1), ') ', group_attendance_dict[user_id][0], ' - ',
-                                                        ' / '.join(group_attendance_dict[user_id][1])]))
-                "https://stackoverflow.com/questions/44056555/find-longest-streak-in-sqlite"  # Identifying till when
+                # "https://stackoverflow.com/questions/44056555/find-longest-streak-in-sqlite"  # Identifying till when
             else:
                 non_added_attendance_ids.append(user_id)
                 attendance_message_body.append(''.join([str(i + 1), ') ', id_name_dict[user_id], ' - P']))
-                # Also another problem: The first one, if only half a day got issue, then the other half a day won't
-                # be updated.
-                # Ok screw it, when you update attendance, update for all time periods of the day
-                # Remember to add to the SQL table
+                attendance_status_dict['P'] += 1
 
         # Adding the attendances of all the present users
         users_to_add = [(group_id, user, i + 1, date_message) for user in non_added_attendance_ids
@@ -288,16 +334,22 @@ def get_group_attendance_backend(group_id: int, date: datetime.date=None):
             users_to_add
         )
 
+        print(attendance_status_dict)
+        attendance_message_summary = [f"Strength: {sum(attendance_status_dict.values())}",
+                                      f"Present: {attendance_status_dict['P']}\n"] + \
+                                     [''.join([key, ": ", f"{attendance_status_dict[key]:02d}"])
+                                         for key in attendance_status_dict if key != 'P']
+        print(attendance_message_summary)
+
         # Save changes
         con.commit()
 
     # Returns the body of the attendance message for people who need it
-    return attendance_message_body
+    return attendance_message_body, attendance_message_summary
 
 
 # Changes the attendance of users on a specific day
 def change_group_attendance_backend(update_obj: Update, context: CallbackContext, day: datetime.date) -> None:
-
     # Gets the message that user sends, and cancels if necessary
     chat_id, message = get_admin_reply(update_obj, context)
     if message == "OK":
