@@ -146,11 +146,14 @@ def _get_user_attendance_process(update_obj: Update, context: CallbackContext, u
         update_obj.message.reply_text("Users not entered correctly!")
         return False
 
+    print(users)
+
     # Gets an attendance message for each user
     for user in users:
         # Gets the user_id from the rank
         user_id = convert_rank_to_id(current_group, user)
         attendance_message_body = get_single_user_attendance_backend(current_group, user_id, start_date, end_date)
+        print(attendance_message_body)
         update_obj.message.reply_text('\n'.join(attendance_message_body))
 
     # Update that everything is done

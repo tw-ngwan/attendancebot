@@ -81,6 +81,25 @@ def get_group_members(group_id):
     return all_ids
 
 
+# Verifies that a user is in a group and has the privileges he needs to execute function
+def verify_group_and_role(update_obj: Update, context: CallbackContext, role: str) -> bool:
+
+    current_group_id = settings.current_group_id
+    chat_id = update_obj.message.chat_id
+    role_index_dict = {settings.ADMIN: 0, settings.MEMBER: 1, settings.OBSERVER: 2, "Other": 3}
+    # Verify that the user is in a group first
+    if current_group_id is None:
+        update_obj.message.reply_text("Enter a group first with /entergroup!")
+        return False
+
+    # Check that the user has the right privileges
+    if check_admin_privileges(chat_id, current_group_id) > role_index_dict[role]:
+        reply_non_admin(update_obj, context, role)
+        return False
+
+    return True
+
+
 # Checks that a user is an admin
 # If admin, returns 0. If member, returns 1. If observer, returns 2. If none, returns 3
 def check_admin_privileges(chat_id, group_id):
@@ -100,12 +119,12 @@ def check_admin_privileges(chat_id, group_id):
         roles = cur.fetchall()
         if not roles:
             return 3
-        roles_dict = {'Admin': 0, 'Member': 1, 'Observer': 2}
+        roles_dict = {settings.ADMIN: 0, settings.MEMBER: 1, settings.OBSERVER: 2}
         return roles_dict[roles[0][0]]
 
 
 # Replies to user that they are not admin
-def reply_non_admin(update_obj: Update, context: CallbackContext, role: str = "Admin") -> None:
+def reply_non_admin(update_obj: Update, context: CallbackContext, role: str = settings.ADMIN) -> None:
     update_obj.message.reply_text("You are not qualified to perform this action!")
     update_obj.message.reply_text(f"You need to be a {role} to perform this action!")
     return None
@@ -168,12 +187,7 @@ def get_day_group_attendance(update_obj: Update, context: CallbackContext, day: 
     chat_id = update_obj.message.chat_id
     current_group_id = settings.current_group_id
 
-    if current_group_id is None:
-        update_obj.message.reply_text("Enter a group first with /entergroup!")
-        return None
-
-    if check_admin_privileges(chat_id, current_group_id) >= 3:
-        reply_non_admin(update_obj, context, "Observer")
+    if not verify_group_and_role(update_obj, context, "Observer"):
         return None
 
     # Once user is verified, start getting attendance
@@ -564,7 +578,7 @@ def get_intended_users(user_string: str, group_id: int=None):
 
     # We first split the user_string, but must test if the input is valid
     try:
-        users = map(int, user_string.split())
+        users = list(map(int, user_string.split()))
     except ValueError:
         return False
 
@@ -576,7 +590,7 @@ def get_intended_users(user_string: str, group_id: int=None):
         with sqlite3.connect('attendance.db') as con:
             cur = con.cursor()
             cur.execute(
-                """SELECT COUNT(*) FROM groups WHERE id = ?""", (group_id, )
+                """SELECT COUNT(*) FROM users WHERE group_id = ?""", (group_id, )
             )
             group_size = cur.fetchall()[0][0]
 
@@ -589,7 +603,7 @@ def convert_rank_to_id(group_id, user_rank) -> int:
     with sqlite3.connect('attendance.db') as con:
         cur = con.cursor()
         cur.execute(
-            """SELECT id FROM users WHERE group_id = ? AND user_rank = ?""", (group_id, user_rank)
+            """SELECT id FROM users WHERE group_id = ? AND rank = ?""", (group_id, user_rank)
         )
         result = cur.fetchall()[0][0]
         return result if result else 0

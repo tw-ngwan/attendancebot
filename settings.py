@@ -3,6 +3,7 @@ current_group_id = None
 current_group_name = None
 temp_groups = {}
 attendance_date_edit = {}
+OBSERVER, MEMBER, ADMIN = "Observer", "Member", "Admin"
 
 
 class AttendanceRecord:

@@ -7,7 +7,7 @@ from telegram.ext import CallbackContext, ConversationHandler
 import settings
 import datetime
 from backend_implementations import get_group_members, get_group_attendance_backend, check_admin_privileges, \
-    reply_non_admin, get_day_group_attendance
+    reply_non_admin, get_day_group_attendance, verify_group_and_role
 from keyboards import group_users_keyboard
 
 
@@ -44,6 +44,11 @@ def get_any_day_group_attendance(update_obj: Update, context: CallbackContext) -
 # Gets the attendance of a user over the past month
 # Questions you first need to answer: What period of time? How do you define it? Through another question?
 def get_user_attendance_month(update_obj: Update, context: CallbackContext) -> int:
+
+    # We first verify that user is in a group, and is at least Member in the group
+    if not verify_group_and_role(update_obj, context, settings.MEMBER):
+        return ConversationHandler.END
+
     update_obj.message.reply_text("Key in the numbers of the users who you want to get the attendance of, each "
                                   "separated by a space. (Eg: 3 4 6)")
     return settings.FIRST
@@ -51,6 +56,11 @@ def get_user_attendance_month(update_obj: Update, context: CallbackContext) -> i
 
 # Gets the attendance of a user over an arbitrary period of time
 def get_user_attendance_arbitrary(update_obj: Update, context: CallbackContext) -> int:
+
+    # We first verify that user is in a group, and is at least Member in the group
+    if not verify_group_and_role(update_obj, context, settings.MEMBER):
+        return ConversationHandler.END
+
     update_obj.message.reply_text("Key in the numbers of the users who you want to get the attendance of, each "
                                   "separated by a space in the first row. Key in the start date in 6-digit form "
                                   "in the second row, and the end date in the third row (both inclusive). Here's an "
@@ -64,17 +74,9 @@ def get_user_attendance_arbitrary(update_obj: Update, context: CallbackContext) 
 # Changes attendance in the group you are in, for today
 # Ok implement two functions: one to change today's attendance, the other to change tomorrow's
 def change_attendance(update_obj: Update, context: CallbackContext) -> int:
-    current_group_id = settings.current_group_id
-    chat_id = update_obj.message.chat_id
 
-    # Verify that the user is in a group first
-    if current_group_id is None:
-        update_obj.message.reply_text("Enter a group first with /entergroup!")
-        return ConversationHandler.END
-
-    # Check that the user is at least member
-    if check_admin_privileges(chat_id, current_group_id) >= 2:
-        reply_non_admin(update_obj, context, "Member")
+    # We check that the user is in a group, and is at least Member in the group
+    if not verify_group_and_role(update_obj, context, settings.MEMBER):
         return ConversationHandler.END
 
     # Give user instructions on how to submit message
@@ -84,17 +86,9 @@ def change_attendance(update_obj: Update, context: CallbackContext) -> int:
 
 # Asks question to change attendance of group on any day
 def change_any_day_attendance(update_obj: Update, context: CallbackContext) -> int:
-    current_group_id = settings.current_group_id
-    chat_id = update_obj.message.chat_id
 
-    # Verify that the user is in a group first
-    if current_group_id is None:
-        update_obj.message.reply_text("Enter a group first with /entergroup!")
-        return ConversationHandler.END
-
-    # Check that the user is at least member
-    if check_admin_privileges(chat_id, current_group_id) >= 1:
-        reply_non_admin(update_obj, context, "Admin")
+    # We check that the user is in a group, and is at least Admin in the group
+    if not verify_group_and_role(update_obj, context, settings.ADMIN):
         return ConversationHandler.END
 
     update_obj.message.reply_text("Enter the date that you want to change attendance of, in the 6-digit format "
