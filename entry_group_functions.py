@@ -2,11 +2,18 @@ from telegram import Update
 from telegram.ext import CallbackContext, ConversationHandler
 import settings
 from keyboards import yes_no_button_markup, group_name_keyboards
+from backend_implementations import verify_group_and_role
 import sqlite3
 
 
 # Creates a group
 def create_group(update_obj: Update, context: CallbackContext) -> int:
+
+    # Get the whole group's id
+    current_group_id = settings.current_group_id
+    if current_group_id is not None and not verify_group_and_role(update_obj, context, settings.ADMIN):
+        return ConversationHandler.END
+
     update_obj.message.reply_text("Great! What would you like to name your group? To cancel, type 'OK'")
     return settings.FIRST
 
@@ -42,12 +49,16 @@ def current_group(update_obj: Update, context: CallbackContext) -> ConversationH
 
 # Deletes group
 def delete_group(update_obj: Update, context: CallbackContext) -> int:
-    if _check_admin_privileges(update_obj, context):
-        update_obj.message.reply_text("Are you sure you want to delete the group?", reply_markup=yes_no_button_markup)
-        return settings.FIRST
-    update_obj.message.reply_text("Admin Privileges are required to delete the group!")
-    # Implementation to be continued in state_group_functions
-    return ConversationHandler.END
+
+    # Verify that you can do this role
+    current_group_id = settings.current_group_id
+    if not verify_group_and_role(update_obj, context, settings.ADMIN):
+        return ConversationHandler.END
+
+    update_obj.message.reply_text("Are you sure you want to delete the group? Note that this is "
+                                  "an IRREVERSIBLE action and that ALL DATA WILL BE LOST!",
+                                  reply_markup=yes_no_button_markup)
+    return settings.FIRST
 
 
 # Merges groups -> handle problem of merging with oneself (or not)
@@ -64,14 +75,13 @@ def merge_groups(update_obj: Update, context: CallbackContext) -> int:
 
 # Joins the members of two groups together
 def join_group_members(update_obj: Update, context: CallbackContext) -> int:
-    if _check_admin_privileges(update_obj, context):
-        chat_id = update_obj.message.chat_id
-        groups_button_markup = group_name_keyboards(chat_id)
-        update_obj.message.reply_text("Select the first group to be joined", reply_markup=groups_button_markup)
-        return settings.FIRST
-    update_obj.message.reply_text("Admin Privileges are required to join groups!")
-    # Implementation to be continued in state_group_functions
-    return ConversationHandler.END
+
+    current_group_id = settings.current_group_id
+    if not verify_group_and_role(update_obj, context, settings.ADMIN):
+        return ConversationHandler.END
+
+    update_obj.message.reply_text("Select the first group to be joined", reply_markup=groups_button_markup)
+    return settings.FIRST
 
 
 # Joins an existing group
@@ -94,9 +104,3 @@ def change_group_title(update_obj: Update, context: CallbackContext) -> int:
     update_obj.message.reply_text("What title do you want to give the group?")
     # Implementation to be continued in state_group_functions
     return settings.FIRST
-
-
-# Checks for admin privileges. Internal function
-def _check_admin_privileges(update_obj: Update, context: CallbackContext) -> bool:
-    # To be implemented
-    return True

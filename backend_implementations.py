@@ -78,6 +78,8 @@ def get_group_members(group_id):
             (group_id,)
         )
         all_ids = cur.fetchall()
+
+        con.commit()
     return all_ids
 
 
@@ -120,7 +122,9 @@ def check_admin_privileges(chat_id, group_id):
         if not roles:
             return 3
         roles_dict = {settings.ADMIN: 0, settings.MEMBER: 1, settings.OBSERVER: 2}
-        return roles_dict[roles[0][0]]
+        con.commit()
+
+    return roles_dict[roles[0][0]]
 
 
 # Replies to user that they are not admin
@@ -388,7 +392,7 @@ def change_group_attendance_backend(update_obj: Update, context: CallbackContext
     for entry in parsed_attendance_message:
 
         # First, we check if the user exists
-        user_id = check_user_rank_exists(group_id=current_group, user_rank=int(entry[0]))
+        user_id = convert_rank_to_id(group_id=current_group, user_rank=int(entry[0]))
         if not user_id:
             update_obj.message.reply_text(f"Regarding user {entry[0]}: User does not exist. ")
             continue
@@ -474,27 +478,6 @@ def parse_user_change_instructions(message: str):
     return parsed_attendance_message
 
 
-# Checks whether a user of a certain rank (integer) in a group exists
-# Function used in change_group_attendance_backend
-def check_user_rank_exists(group_id: int, user_rank: int):
-    with sqlite3.connect('attendance.db') as con:
-        cur = con.cursor()
-        cur.execute(
-            """
-            SELECT id 
-              FROM users 
-             WHERE group_id = ? 
-               AND rank = ?""",
-            (group_id, user_rank)
-        )
-        user_id = cur.fetchall()
-        if not user_id:
-            return False
-        user_id = user_id[0][0]
-
-    return user_id
-
-
 # Gets user's attendance over the past month
 # If don't have, will assume that get attendance of the past month
 def get_single_user_attendance_backend(group_id, user_id, start_date: datetime.date, end_date: datetime.date):
@@ -558,11 +541,10 @@ def get_single_user_attendance_backend(group_id, user_id, start_date: datetime.d
                 attendance_to_add.append(' / '.join(user_statuses_revamped[date]))
 
             attendance_message_body.append(''.join(attendance_to_add))
-        #
-        # attendance_message_body += [''.join([represent_date(date), ": ", ' / '.join(user_statuses_revamped[date])])
-        #                             for date in user_statuses_revamped]
 
-        return attendance_message_body
+            con.commit()
+
+    return attendance_message_body
 
 
 # Represents date obtained from a SQLite server
@@ -575,6 +557,7 @@ def represent_date(date_str: str) -> str:
 
 # Gets the users that the admin wants
 def get_intended_users(user_string: str, group_id: int=None):
+    """Returns a list of the ranks of all users if the input is valid, and False if not """
 
     # We first split the user_string, but must test if the input is valid
     try:
@@ -593,12 +576,13 @@ def get_intended_users(user_string: str, group_id: int=None):
                 """SELECT COUNT(*) FROM users WHERE group_id = ?""", (group_id, )
             )
             group_size = cur.fetchall()[0][0]
+            con.commit()
 
     # We check that all the users are valid with this condition: If valid, return users, else, return False.
     return users if min([(1 <= user <= group_size) and type(user) == int for user in users]) else False
 
 
-# Converts user rank into user_id
+# Converts user rank into user_id, and verifies that it exists
 def convert_rank_to_id(group_id, user_rank) -> int:
     with sqlite3.connect('attendance.db') as con:
         cur = con.cursor()
@@ -606,4 +590,7 @@ def convert_rank_to_id(group_id, user_rank) -> int:
             """SELECT id FROM users WHERE group_id = ? AND rank = ?""", (group_id, user_rank)
         )
         result = cur.fetchall()[0][0]
-        return result if result else 0
+        con.commit()
+
+    # If not exists, returns False
+    return result if result else 0

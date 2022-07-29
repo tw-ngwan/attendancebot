@@ -62,12 +62,12 @@ import settings
 from entry_help_functions import start, user_help
 from entry_group_functions import create_group, enter_group, leave_group, current_group, delete_group, merge_groups, \
     join_group_members, join_existing_group, quit_group, change_group_title
-from entry_user_functions import add_users, get_users
+from entry_user_functions import add_users, get_users, remove_users, edit_users
 from entry_attendance_functions import get_today_group_attendance, get_tomorrow_group_attendance, \
     get_any_day_group_attendance, change_attendance, change_any_day_attendance, \
     get_user_attendance_month, get_user_attendance_arbitrary
 from state_group_functions import name_group_title, enter_group_implementation
-from state_user_functions import store_added_user
+from state_user_functions import store_added_user, remove_user_verification, remove_user_follow_up, edit_user_follow_up
 from state_attendance_functions import change_today_attendance_follow_up, change_tomorrow_attendance_follow_up, \
     change_any_day_attendance_get_day, change_any_day_attendance_follow_up, \
     get_specific_day_group_attendance_follow_up, get_user_attendance_month_follow_up, \
@@ -115,7 +115,7 @@ Here is a walkthrough of what each of the functions will do:
 /start: Once you activate the bot, it will send you the attendance statuses of each group you're in every day. 
 /help: Gives you the list of commands available and explains the concept of "groups" and "subgroups"
 
-/creategroup: Creates a group within your current group (None, Admin)
+/creategroup: Creates a group within your current group (None, Admin) 
 /entergroup: Enters group to do stuff in the group (Observer)
 /leavegroup: Leaves group you are currently in after you finish doing stuff (Observer)
 /currentgroup: Returns the current group you are in, and None if not (Observer)
@@ -132,8 +132,6 @@ Here is a walkthrough of what each of the functions will do:
 /getusers: Gets the names of all users (Observer)
 /becomeadmin: Enter a password to become group admin (Observer, not for admin)
 /becomemember: Enter a password to become group member (Observer, not for admin and member)
-/getadmins: Returns a list of all admin users. (Is this needed?) 
-/dismissadmins: Dismisses an admin user. (Is this needed?) 
 /changeuserrank: Swaps the ranks of two users (Member)
 
 /editsettings: Edits settings. To be elaborated (Is this needed?) 
@@ -255,6 +253,21 @@ def main():
     get_users_handler = ConversationHandler(
         entry_points=[CommandHandler('getusers', get_users)], states={}, fallbacks=[]
     )
+    remove_users_handler = ConversationHandler(
+        entry_points=[CommandHandler('removeusers', remove_users)],
+        states={
+            settings.FIRST: [MessageHandler(Filters.text, remove_user_verification)],
+            settings.SECOND: [MessageHandler(Filters.text, remove_user_follow_up)]
+        },
+        fallbacks=[]
+    )
+    edit_users_handler = ConversationHandler(
+        entry_points=[CommandHandler('editusers', edit_users)],
+        states={
+            settings.FIRST: [MessageHandler(Filters.text, edit_user_follow_up)]
+        },
+        fallbacks=[]
+    )
 
     # Attendance functions
     get_today_attendance_handler = ConversationHandler(
@@ -313,7 +326,7 @@ def main():
                     delete_group_handler, merge_groups_handler, join_members_handler, join_groups_handler,
                     quit_group_handler, change_group_title_handler,
 
-                    add_users_handler, get_users_handler,
+                    add_users_handler, get_users_handler, remove_users_handler, edit_users_handler,
 
                     get_today_attendance_handler, get_tomorrow_attendance_handler, get_any_day_attendance_handler,
                     get_user_attendance_month_handler, get_user_attendance_arbitrary_handler,

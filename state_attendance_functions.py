@@ -11,23 +11,6 @@ from backend_implementations import get_group_members, get_admin_reply, check_ad
 from entry_attendance_functions import _change_attendance_send_messages
 
 
-# I need to find a way to record what the attendance of a person is over multiple days, that is track the streak of
-# LL until when
-# Maybe add one more column into SQL (LastDay)
-
-
-# Gets the name of user to change attendance of, and asks how the attendance is to be changed
-# Do I give user a keyboard or what
-# Yeah give a keyboard to update attendance
-# But keyboard is a little too troublesome, and need to ask again
-# Maybe ask user to answer in following formats
-# P / LL
-# LL
-# LL till 260722
-# But also need to assert that the date is ok, if not the bot will just crash
-# But what if user enter wrongly, and want to change the attendance
-# Need to ask them to retype in "P till <date>" to cancel the last attendance change, then redo again
-
 # Attendance is in the following format:
 # 1: P / LL
 # 3: LL
@@ -146,14 +129,14 @@ def _get_user_attendance_process(update_obj: Update, context: CallbackContext, u
         update_obj.message.reply_text("Users not entered correctly!")
         return False
 
-    print(users)
+    # print(users)
 
     # Gets an attendance message for each user
     for user in users:
         # Gets the user_id from the rank
         user_id = convert_rank_to_id(current_group, user)
         attendance_message_body = get_single_user_attendance_backend(current_group, user_id, start_date, end_date)
-        print(attendance_message_body)
+        # print(attendance_message_body)
         update_obj.message.reply_text('\n'.join(attendance_message_body))
 
     # Update that everything is done

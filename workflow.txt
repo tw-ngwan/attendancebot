@@ -8,3 +8,11 @@ Test more to check if invalid input will be accepted for attendance
 I have added weekend check functionality, but I probably need to do 
 something to make it more versatile (that is, select the days that you 
 want). This will require a list of possible days 
+
+
+Stuff left to do: 
+0. Add functionality to join, quit, and leave groups. And to become admin or member
+1. Add functionality to swap users' ranks, merge groups together 
+2. Edit the attendance to get attendance of group and child groups 
+3. Get the bot to ping the user every day. 
+https://stackoverflow.com/questions/40352927/how-do-i-edit-a-sent-message-using-telegrams-python-bot-api

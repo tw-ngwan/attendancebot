@@ -21,7 +21,6 @@ Name        TEXT NOT NULL,
 DateAdded   TEXT NOT NULL, 
 chat_id     TEXT         , 
 role        TEXT NOT NULL, 
-rank     INTEGER NOT NULL, 
 FOREIGN KEY(group_id) REFERENCES groups(id)
 );
 
@@ -30,6 +29,7 @@ id       INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL,
 group_id INTEGER NOT NULL, 
 Name        TEXT NOT NULL, 
 DateAdded   TEXT NOT NULL, 
+rank     INTEGER NOT NULL, 
 FOREIGN KEY(group_id) REFERENCES groups(id)
 );
 
@@ -45,15 +45,13 @@ FOREIGN KEY(user_id) REFERENCES users(id),
 CONSTRAINT unq UNIQUE(group_id, user_id, TimePeriod, Date)
 ); 
 
-CREATE TABLE admins (
+CREATE TABLE admins_dup (
 id       INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL, 
 group_id INTEGER NOT NULL, 
-user_id  INTEGER         , 
 DateAdded   TEXT NOT NULL, 
 chat_id     TEXT NOT NULL, 
 role        TEXT NOT NULL, 
-FOREIGN KEY(group_id) REFERENCES groups(id), 
-FOREIGN KEY(user_id) REFERENCES users(id)
+FOREIGN KEY(group_id) REFERENCES groups(id)
 );
 
 
