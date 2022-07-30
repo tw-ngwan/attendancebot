@@ -61,12 +61,14 @@ import sqlite3
 import settings
 from entry_help_functions import start, user_help
 from entry_group_functions import create_group, enter_group, leave_group, current_group, delete_group, merge_groups, \
-    join_group_members, join_existing_group, quit_group, change_group_title
+    join_existing_group, quit_group, change_group_title, uprank, get_group_passwords
 from entry_user_functions import add_users, get_users, remove_users, edit_users
 from entry_attendance_functions import get_today_group_attendance, get_tomorrow_group_attendance, \
     get_any_day_group_attendance, change_attendance, change_any_day_attendance, \
     get_user_attendance_month, get_user_attendance_arbitrary
-from state_group_functions import name_group_title, enter_group_implementation
+from state_group_functions import create_group_follow_up, enter_group_implementation, delete_group_follow_up, \
+    join_group_get_group_code, join_group_follow_up, quit_group_follow_up, change_group_title_follow_up, \
+    uprank_follow_up
 from state_user_functions import store_added_user, remove_user_verification, remove_user_follow_up, edit_user_follow_up
 from state_attendance_functions import change_today_attendance_follow_up, change_tomorrow_attendance_follow_up, \
     change_any_day_attendance_get_day, change_any_day_attendance_follow_up, \
@@ -117,51 +119,37 @@ Here is a walkthrough of what each of the functions will do:
 
 /creategroup: Creates a group within your current group (None, Admin) 
 /entergroup: Enters group to do stuff in the group (Observer)
-/leavegroup: Leaves group you are currently in after you finish doing stuff (Observer)
-/currentgroup: Returns the current group you are in, and None if not (Observer)
-/deletegroup: Deletes the group. Needs Admin privileges, and prompt to do so (Admin)
-/mergegroups: Merges two groups together, with one becoming the parent group, and the other its child (Admin)
-/joingroupmembers: Joins the members of two groups together, under a new name (Admin)
-/joinexistinggroup: Joins a group that already exists, using its group id. (None)
-/quitgroup: Quits and exits your group. Do NOT confuse with leavegroup! (Observer)
-/changegrouptitle: Changes group title. Admin privileges required. (Admin)
+/leavegroup: Leaves group you are currently in after you finish doing stuff (Observer) 
+/currentgroup: Returns the current group you are in, and None if not (Observer) 
+/deletegroup: Deletes the group. Needs Admin privileges, and prompt to do so (Admin) O X
+/mergegroups: Merges two groups together, with one becoming the parent group, and the other its child (Admin) O 
+/joingroupmembers: Joins the members of two groups together, under a new name (Admin) O (I feel like this no need)
+/joingroup: Joins a group that already exists, using its group id. (None) O X
+/quitgroup: Quits and exits your group. Do NOT confuse with leavegroup! (Observer) O X
+/changegrouptitle: Changes group title. Admin privileges required. (Admin) O X
+/getgrouppasswords: Returns the passwords that you need (can tag to the level that you are at) O X 
+/uprank: Increases the rank of the user O X 
 
 /addusers: Adds users to the group you are currently in (/entergroup). Recursive, till enter OK (Member)
 /removeusers: Removes users from the group you are currently in. Recursive, till enter OK (Admin)
 /editusers: Changes the names and details of the user (Admin)
 /getusers: Gets the names of all users (Observer)
-/becomeadmin: Enter a password to become group admin (Observer, not for admin)
-/becomemember: Enter a password to become group member (Observer, not for admin and member)
-/changeuserrank: Swaps the ranks of two users (Member)
+/changegroupordering: Swaps the ranks of two users (Member) O 
 
-/editsettings: Edits settings. To be elaborated (Is this needed?) 
 /changeattendancetoday: Changes the attendance status of any group members of group you are currently in (Member)
 /changeattendancetomorrow: 
-/changeattendanceanyday: (Admin) 
+/changeattendanceanyday: Changes the attendance status of any group members on any day. Can backdate also (Admin) 
 /getattendancetoday: Returns the attendance status of all group members on that day (Observer)
-/getattendancetomorrow: 
-/getattendanceanyday: 
+/getattendancetomorrow: (Observer)
+/getattendanceanyday: (Observer/Member)
 /getuserattendancemonth: Returns the attendance status of a user over a period of time (user-defined) (Member)
 /getuserattendancearbitrary: (Member)
-/backdatechangeattendance: Changes the attendance of a user, backdated. Admin Privileges required. (Admin) (I think not needed)
 
-/stop: Stops the bot from running. 
+/stop: Stops the bot from running. O
 
-Functions to finish first: 
-/creategroup O
-/entergroup O 
-/leavegroup O
-/currentgroup O
-/deletegroup 
+However, need to change get attendance functions to make them recursive. Need to change change_attendance functions 
+to make them send something first. 
 
-/addusers
-/removeusers
-/editusers
-/getusers
-
-/changeattendance
-/getgroupattendance
-/getuserattendance
 """
 
 "Schedule message: https://stackoverflow.com/questions/48288124/how-to-send-message-in-specific-time-telegrambot"
@@ -184,7 +172,7 @@ def main():
     create_group_handler = ConversationHandler(
         entry_points=[CommandHandler('creategroup', create_group)],
         states={
-            settings.FIRST: [MessageHandler(Filters.text, name_group_title)],
+            settings.FIRST: [MessageHandler(Filters.text, create_group_follow_up)],
         },
         fallbacks=[]
     )
@@ -202,7 +190,7 @@ def main():
     delete_group_handler = ConversationHandler(
         entry_points=[CommandHandler('deletegroup', delete_group)],
         states={
-
+            settings.FIRST: [MessageHandler(Filters.text, delete_group_follow_up)]
         },
         fallbacks=[]
     )
@@ -213,31 +201,37 @@ def main():
         },
         fallbacks=[]
     )
-    join_members_handler = ConversationHandler(
-        entry_points=[CommandHandler('joingroupmembers', join_group_members)],
-        states={
-
-        },
-        fallbacks=[]
-    )
     join_groups_handler = ConversationHandler(
-        entry_points=[CommandHandler('joinexistinggroup', join_existing_group)],
+        entry_points=[CommandHandler('joingroup', join_existing_group)],
         states={
-
+            settings.FIRST: [MessageHandler(Filters.text, join_group_get_group_code)],
+            settings.SECOND: [MessageHandler(Filters.text, join_group_follow_up)]
         },
         fallbacks=[]
     )
     quit_group_handler = ConversationHandler(
         entry_points=[CommandHandler('quitgroup', quit_group)],
         states={
-
+            settings.FIRST: [MessageHandler(Filters.text, quit_group_follow_up)]
         },
         fallbacks=[]
     )
     change_group_title_handler = ConversationHandler(
         entry_points=[CommandHandler('changegrouptitle', change_group_title)],
         states={
-
+            settings.FIRST: [MessageHandler(Filters.text, change_group_title_follow_up)]
+        },
+        fallbacks=[]
+    )
+    get_group_passwords_handler = ConversationHandler(
+        entry_points=[CommandHandler('getgrouppasswords', get_group_passwords)],
+        states={},
+        fallbacks=[]
+    )
+    uprank_handler = ConversationHandler(
+        entry_points=[CommandHandler('uprank', uprank)],
+        states={
+            settings.FIRST: [MessageHandler(Filters.text, uprank_follow_up)]
         },
         fallbacks=[]
     )
@@ -323,8 +317,8 @@ def main():
     global dispatcher
     all_handlers = [start_handler, help_handler,
                     create_group_handler, enter_group_handler, leave_group_handler, current_group_handler,
-                    delete_group_handler, merge_groups_handler, join_members_handler, join_groups_handler,
-                    quit_group_handler, change_group_title_handler,
+                    delete_group_handler, merge_groups_handler, join_groups_handler, quit_group_handler,
+                    change_group_title_handler, get_group_passwords_handler, uprank_handler,
 
                     add_users_handler, get_users_handler, remove_users_handler, edit_users_handler,
 

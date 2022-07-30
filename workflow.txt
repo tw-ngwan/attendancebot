@@ -15,4 +15,5 @@ Stuff left to do:
 1. Add functionality to swap users' ranks, merge groups together 
 2. Edit the attendance to get attendance of group and child groups 
 3. Get the bot to ping the user every day. 
+4. Add encryption so that even if people have access, cannot use
 https://stackoverflow.com/questions/40352927/how-do-i-edit-a-sent-message-using-telegrams-python-bot-api

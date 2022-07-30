@@ -37,8 +37,16 @@ def change_tomorrow_attendance_follow_up(update_obj: Update, context: CallbackCo
 # Gets the day that the user wants for changing attendance. For change_any_day_attendance
 def change_any_day_attendance_get_day(update_obj: Update, context: CallbackContext) -> int:
     chat_id, day = get_admin_reply(update_obj, context)
-    if not check_valid_datetime(day):
+    day_datetime = check_valid_datetime(day)
+
+    # Check that date is entered in a valid format
+    if not day_datetime:
         update_obj.message.reply_text("Date entered in an invalid format")
+        return ConversationHandler.END
+
+    # Check that it is a weekday
+    if day_datetime.weekday() > 4:
+        update_obj.message.reply_text("Date is a weekend!")
         return ConversationHandler.END
 
     # Stores the day (as a string) in the settings dictionary

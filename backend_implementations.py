@@ -594,3 +594,29 @@ def convert_rank_to_id(group_id, user_rank) -> int:
 
     # If not exists, returns False
     return result if result else 0
+
+
+# Determines the rank of a user in a group. Used by join_group_follow_up and uprank_follow_up
+def rank_determination(password: str, group_id: int) -> int:
+    """Returns the rank that the user is, and false else"""
+
+    # Check for the passwords of the group
+    with sqlite3.connect('attendance.db') as con:
+        cur = con.cursor()
+        cur.execute("""SELECT AdminPassword, MemberPassword, ObserverPassword FROM groups WHERE id = ?""",
+                    (group_id, ))
+        group_passwords = cur.fetchall()
+        con.commit()
+
+    # Gets which codes are matching
+    matching_index = [i for i in range(len(group_passwords)) if group_passwords[i] == password]
+    # If nothing matches
+    if not matching_index:
+        return False
+
+    matching_index = matching_index[0]
+
+    # List that shows which password corresponds with which level of security
+    password_indices = [settings.ADMIN, settings.MEMBER, settings.OBSERVER]
+
+    return password_indices[matching_index]
