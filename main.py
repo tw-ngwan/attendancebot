@@ -125,8 +125,7 @@ Here is a walkthrough of what each of the functions will do:
 /leavegroup: Leaves group you are currently in after you finish doing stuff (Observer) 
 /currentgroup: Returns the current group you are in, and None if not (Observer) 
 /deletegroup: Deletes the group. Needs Admin privileges, and prompt to do so (Admin) O X
-/mergegroups: Merges two groups together, with one becoming the parent group, and the other its child (Admin) O 
-/joingroupmembers: Joins the members of two groups together, under a new name (Admin) O (I feel like this no need)
+/mergegroups: Merges two groups together, with one becoming the parent group, and the other its child (Admin) O X 
 /joingroup: Joins a group that already exists, using its group id. (None) O X
 /quitgroup: Quits and exits your group. Do NOT confuse with leavegroup! (Observer) O X
 /changegrouptitle: Changes group title. Admin privileges required. (Admin) O X
@@ -148,7 +147,7 @@ Here is a walkthrough of what each of the functions will do:
 /getuserattendancemonth: Returns the attendance status of a user over a period of time (user-defined) (Member)
 /getuserattendancearbitrary: (Member)
 
-/stop: Stops the bot from running. O
+/stop: Stops the bot from running. O (Is this needed?) 
 
 However, need to change get attendance functions to make them recursive. Need to change change_attendance functions 
 to make them send something first. 

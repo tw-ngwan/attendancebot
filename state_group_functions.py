@@ -9,7 +9,7 @@ from telegram.ext import ConversationHandler
 import settings
 from keyboards import yes_no_button_markup, group_name_keyboards
 from backend_implementations import generate_random_password, generate_random_group_code, \
-    get_admin_reply, get_admin_groups, rank_determination, get_group_id_from_button
+    get_admin_reply, get_admin_groups, rank_determination, get_group_id_from_button, check_admin_privileges
 import sqlite3
 
 
@@ -371,7 +371,13 @@ def merge_groups_follow_up(update_obj: Update, context: CallbackContext) -> int:
         return ConversationHandler.END
 
     group_id = get_group_id_from_button(message)
-    merge_group_storage.child_groups.add(group_id)
     group_button_markup = group_name_keyboards(chat_id, extra_options=['OK'])
+    # Check that you are group admin of the group that you want to add to
+    if check_admin_privileges(chat_id, group_id) > 0:
+        update_obj.message.reply_text("You need to be an admin of the group you want to merge!",
+                                      reply_markup=group_button_markup)
+        return settings.THIRD
+
+    merge_group_storage.child_groups.add(group_id)
     update_obj.message.reply_text(f"Ok, group {message} added", reply_markup=group_button_markup)
     return settings.THIRD

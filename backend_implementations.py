@@ -74,6 +74,7 @@ def get_group_members(group_id):
             """
             SELECT id, Name FROM users
              WHERE group_id = ?
+             ORDER BY rank
             """,
             (group_id,)
         )
@@ -257,10 +258,8 @@ def get_group_attendance_backend(group_id: int, date: datetime.date = None):
                 group_attendance_dict[member[0]] = [member[1], ['P'] * num_daily_reports]
             group_attendance_dict[member[0]][1][member[2] - 1] = member[3]
 
-        # Gets the attendance of the remaining people
+        # Gets the attendance of the remaining people. Comes in the form of a list of tuples: (id, name)
         all_members = get_group_members(group_id)
-        print(all_members)
-        id_name_dict = {member[0]: member[1] for member in all_members}
 
         # Create a list to see the ids of people whose attendance are not added yet
         non_added_attendance_ids = []
@@ -270,14 +269,16 @@ def get_group_attendance_backend(group_id: int, date: datetime.date = None):
 
         # Generates the message for the attendance of the remaining people
         attendance_message_body = []
-        for i, user_id in enumerate(id_name_dict.keys()):
-            if user_id in group_attendance_dict:
+
+        # We need to keep the sequence so simple enum will not work
+        for i in range(len(all_members)):
+            if all_members[i][0] in group_attendance_dict:
 
                 # Check if both are the same, if same, then no need the slash, but say till when.
-                if len(set(group_attendance_dict[user_id][1])) == 1:
+                if len(set(group_attendance_dict[all_members[i][0]][1])) == 1:
                     # If present, then just use the regular P message
-                    if group_attendance_dict[user_id][1][0] == 'P':
-                        attendance_message_body.append(''.join([str(i + 1), ') ', id_name_dict[user_id], ' - P']))
+                    if group_attendance_dict[all_members[i][0]][1][0] == 'P':
+                        attendance_message_body.append(''.join([str(i + 1), ') ', all_members[i][1], ' - P']))
                         attendance_status_dict['P'] += 1
 
                     # If not present, find the final date of the attendance
@@ -307,23 +308,24 @@ def get_group_attendance_backend(group_id: int, date: datetime.date = None):
                             ORDER BY Date DESC 
                             LIMIT 1
                             """,
-                            (date_message, user_id, group_id, date_message)
+                            (date_message, all_members[i][0], group_id, date_message)
                         )
                         date_parameters = cur.fetchall()
                         print(date_parameters)
                         final_date, attendance_status, rungroup = date_parameters[0]
                         # print(final_date, attendance_status)
                         final_date_representation = represent_date(final_date)
-                        assert attendance_status == group_attendance_dict[user_id][1][0]
-                        attendance_message_body.append(''.join([str(i + 1), ') ', id_name_dict[user_id], ' - ',
+                        assert attendance_status == group_attendance_dict[all_members[i][0]][1][0]
+                        attendance_message_body.append(''.join([str(i + 1), ') ', all_members[i][1], ' - ',
                                                                 attendance_status, ' till ', final_date_representation]))
                         attendance_status_dict[attendance_status] += 1
 
                 # If both statuses are different, then need the slash
                 else:
-                    attendance_message_body.append(''.join([str(i + 1), ') ', group_attendance_dict[user_id][0], ' - ',
-                                                            ' / '.join(group_attendance_dict[user_id][1])]))
-                    attendance_status_dict[group_attendance_dict[user_id][1][0]] += 1
+                    attendance_message_body.append(''.join([str(i + 1), ') ',
+                                                            group_attendance_dict[all_members[i][0]][0], ' - ',
+                                                            ' / '.join(group_attendance_dict[all_members[i][0]][1])]))
+                    attendance_status_dict[group_attendance_dict[all_members[i][0]][1][0]] += 1
 
                 #
                 #
@@ -336,8 +338,8 @@ def get_group_attendance_backend(group_id: int, date: datetime.date = None):
                 # See https://www.sqlteam.com/articles/detecting-runs-or-streaks-in-your-data
                 # "https://stackoverflow.com/questions/44056555/find-longest-streak-in-sqlite"  # Identifying till when
             else:
-                non_added_attendance_ids.append(user_id)
-                attendance_message_body.append(''.join([str(i + 1), ') ', id_name_dict[user_id], ' - P']))
+                non_added_attendance_ids.append(all_members[i][0])
+                attendance_message_body.append(''.join([str(i + 1), ') ', all_members[i][1], ' - P']))
                 attendance_status_dict['P'] += 1
 
         # Adding the attendances of all the present users
@@ -408,7 +410,6 @@ def change_group_attendance_backend(update_obj: Update, context: CallbackContext
             status = status.strip()
             final_date = final_date.strip()
 
-            # This part has issues, need to debug
             final_date = check_valid_datetime(date_to_check=final_date, date_compared=day, after_date=True)
             if not final_date:
                 update_obj.message.reply_text(f"Regarding user {entry[0]}: Date entered in an invalid format. "
@@ -566,17 +567,8 @@ def get_intended_users(user_string: str, group_id: int=None):
         return False
 
     group_size = float("inf")
-
-    # Next, if there is a group_id provided, we check that all inputs provided are less than the group size
     if group_id is not None:
-        # Next, we check that all users are of a valid input, that is their indices exist, and are smaller than group size.
-        with sqlite3.connect('attendance.db') as con:
-            cur = con.cursor()
-            cur.execute(
-                """SELECT COUNT(*) FROM users WHERE group_id = ?""", (group_id, )
-            )
-            group_size = cur.fetchall()[0][0]
-            con.commit()
+        group_size = get_group_size(group_id)
 
     # We check that all the users are valid with this condition: If valid, return users, else, return False.
     return users if min([(1 <= user <= group_size) and type(user) == int for user in users]) else False
@@ -637,3 +629,94 @@ def get_group_id_from_button(message):
             break
 
     return group_id, group_name
+
+
+# Checks that the pairs of users entered is correct
+def get_intended_user_swap_pairs(message, group_id=None):
+    message = message.strip()
+    pairs = message.split('\n')
+
+    # Couple of tests to check that the entry is correct
+    # First, we check that each entry is an integer in the list
+    try:
+        int_pairs = [tuple(map(int, pair.split())) for pair in pairs]
+    except ValueError:
+        return False
+
+    # Next, if there is a group_id provided, we check that all inputs provided are less than the group size
+    group_size = float("inf")
+    if group_id is not None:
+        group_size = get_group_size(group_id)
+
+    # We check that each pair is valid, comprise different numbers, and is constrained by the group size.
+    return int_pairs if min([(-1 <= user <= group_size) and type(user) == int and len(pair) == 2 and len(set(pair)) != 1
+                             for pair in int_pairs for user in pair]) else False
+
+
+# Swaps pairs of users. For change_group_ordering_follow_up
+def swap_users(a, b, group_id):
+
+    # First, check if we are moving something to the bottom or top
+    if a or b == -1:
+        group_size = get_group_size(group_id)
+
+        var = a if a > b else b  # This gets the actual group that is to be swapped (since the group > -1)
+        with sqlite3.connect('attendance.db') as con:
+            cur = con.cursor()
+            # This does the swapping
+            cur.execute(
+                """
+                UPDATE users
+                SET rank = (CASE WHEN rank = ? THEN ? ELSE rank - 1 END)
+                WHERE group_id = ?
+                AND rank >= ?""",
+                (var, group_size, group_id, var)
+            )
+
+            con.commit()
+
+    if a or b == 0:
+        var = a if a > b else b  # This gets actual group, see above
+        # This does the swapping
+        with sqlite3.connect('attendance.db') as con:
+            cur = con.cursor()
+            cur.execute(
+                """
+                UPDATE users
+                SET rank = (CASE WHEN rank = ? THEN 1 ELSE rank + 1 END)
+                WHERE group_id = ?
+                AND rank <= ?""",
+                (var, group_id, var)
+            )
+
+
+
+    # Now, we just swap values
+    with sqlite3.connect('attendance.db') as con:
+        cur = con.cursor()
+        cur.execute(
+            """
+            UPDATE users
+            SET rank = (CASE WHEN rank = ? THEN ? ELSE ? END)
+            WHERE rank IN (?, ?) 
+            AND group_id = ?
+            """, (a, b, a, a, b, group_id)
+        )
+
+        # Save changes
+        con.commit()
+
+    return None
+
+
+# Gets the group size of a group
+def get_group_size(group_id):
+    with sqlite3.connect('attendance.db') as con:
+        cur = con.cursor()
+        cur.execute("""SELECT COUNT(*) FROM users WHERE group_id = ?""", (group_id,))
+        group_size = cur.fetchall()
+        if not group_size:
+            return 0
+        group_size = group_size[0][0]
+        con.commit()
+    return group_size

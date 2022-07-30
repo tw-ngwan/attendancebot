@@ -176,7 +176,9 @@ def edit_user_follow_up(update_obj: Update, context: CallbackContext) -> int:
     return ConversationHandler.END
 
 
-
+# Changes the group ordering
+def change_group_ordering_follow_up(update_obj: Update, context: CallbackContext) -> int:
+    pass
 
 
 
