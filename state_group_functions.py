@@ -7,9 +7,9 @@ from telegram import Update
 from telegram.ext import CallbackContext
 from telegram.ext import ConversationHandler
 import settings
-from keyboards import group_name_keyboards
+from keyboards import yes_no_button_markup, group_name_keyboards
 from backend_implementations import generate_random_password, generate_random_group_code, \
-    get_admin_reply, get_admin_groups, rank_determination
+    get_admin_reply, get_admin_groups, rank_determination, get_group_id_from_button
 import sqlite3
 
 
@@ -95,13 +95,7 @@ def enter_group_implementation(update_obj: Update, context: CallbackContext) -> 
 
     # Gets the group id from the title
     # The title is of the following form: '{group_name} ({group_id})'. So the code finds the bracket from the back
-    group_name = ''
-    group_id = -1
-    for i in range(len(title) - 2, -1, -1):
-        if title[i] == '(':
-            group_name = title[:i - 1]
-            group_id = int(title[i + 1:len(title) - 1])
-            break
+    group_id, group_name = get_group_id_from_button(title)
 
     if group_id == -1:
         update_obj.message.reply_text("Something went wrong, please try again!")
@@ -279,3 +273,105 @@ def uprank_follow_up(update_obj: Update, context: CallbackContext) -> int:
 
     update_obj.message.reply_text(f"Congratulations, you are now a {user_rank}!")
     return ConversationHandler.END
+
+
+# Merge groups follow up: Check if the users want all users to join a new group
+def merge_groups_check_super_group(update_obj: Update, context: CallbackContext) -> int:
+    chat_id, parent_group = get_admin_reply(update_obj, context)
+    if parent_group == 'OK':
+        update_obj.message.reply_text("Ok, cancelling job now")
+        return ConversationHandler.END
+    # Stores the group that the user wants as the parent. First we get the group id
+    parent_id = get_group_id_from_button(parent_group)
+    settings.merge_group_storage[chat_id] = settings.MergeGroupStorage(parent_id)
+    update_obj.message.reply_text("Do you want to join all users into a super group? That is, all users become united "
+                                  "into one group, rather than remain in their own groups under this new parent group.",
+                                  reply_markup=yes_no_button_markup)
+    return settings.SECOND
+
+
+# Merge groups follow up
+def merge_groups_start_add_users(update_obj: Update, context: CallbackContext) -> int:
+    chat_id, message = get_admin_reply(update_obj, context)
+    merge_group_storage = settings.merge_group_storage[chat_id]
+    merge_group_storage.join_all_groups = message.strip().lower() == 'yes'
+    groups_button_markup = group_name_keyboards(chat_id, extra_options=['OK'])
+    update_obj.message.reply_text("Which groups do you want to add? Press 'OK' when you are done. ",
+                                  reply_markup=groups_button_markup)
+    return settings.THIRD
+
+
+# Store merged groups. This function works recursively and will keep calling itself until OK is entered.
+def merge_groups_follow_up(update_obj: Update, context: CallbackContext) -> int:
+    chat_id, message = get_admin_reply(update_obj, context)
+    merge_group_storage = settings.merge_group_storage[chat_id]
+
+    # If message is ok, that means we can wrap up
+    if message == 'OK':
+
+        # Get the parent group
+        parent_id = merge_group_storage.parent
+
+        # Verify that the parent group is ok
+        if parent_id == -1:
+            update_obj.message.reply_text("Invalid parent group detected. Operation ending...")
+            return ConversationHandler.END
+
+        # Check if all groups want to be joined together
+        join_all_groups = merge_group_storage.join_all_groups
+
+        # Get all child groups
+        all_groups = list(merge_group_storage.child_groups)  # This is a set, take note
+
+        # Update the sqlite database to reflect that the groups are merged
+        with sqlite3.connect('attendance.db') as con:
+            cur = con.cursor()
+            # This is a tuple that contains first, the parent id, and then all the group_ids
+            argument_tuple = tuple([parent_id] + all_groups)
+            if not join_all_groups:
+                # Add parent groups
+                cur.execute(
+                    f"""
+                    UPDATE groups
+                    SET parent_id = ? 
+                    WHERE id IN ({','.join(['?'] * len(all_groups))})
+                    """, argument_tuple
+                )
+            else:
+                # If we want to join all users, we need to update the group_id of all users, admins, attendance
+                argument_tuple = tuple([parent_id] + [ids[1] for ids in all_groups])
+                # For users, transfer over to new group
+                cur.execute(
+                    f"""
+                    UPDATE users
+                    SET group_id = ?
+                    WHERE group_id IN ({','.join(['?'] * len(all_groups))})
+                    """, argument_tuple
+                )
+                # For admins - Delete the users
+                cur.execute(
+                    f"""
+                    DELETE FROM admins
+                    WHERE group_id IN ({','.join(['?'] * len(all_groups))})
+                    """, tuple(all_groups)
+                )
+                # For attendance, transfer over to new group
+                cur.execute(
+                    f"""
+                    UPDATE attendance
+                    SET group_id = ?
+                    WHERE group_id IN ({','.join(['?'] * len(all_groups))})
+                    """, argument_tuple
+                )
+
+            # Save changes
+            con.commit()
+
+        update_obj.message.reply_text("All groups have been merged")
+        return ConversationHandler.END
+
+    group_id = get_group_id_from_button(message)
+    merge_group_storage.child_groups.add(group_id)
+    group_button_markup = group_name_keyboards(chat_id, extra_options=['OK'])
+    update_obj.message.reply_text(f"Ok, group {message} added", reply_markup=group_button_markup)
+    return settings.THIRD

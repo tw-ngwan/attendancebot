@@ -52,7 +52,10 @@ Admins are actual people
 Users are just names
 When you want a function that gets the groups that a person is in or whatever he said, call the admins table
 
-Add functionality to check for weekends. Also find a way to see when the final day of an extended block of LL or sth
+Ok I am worried about one thing. I have a lot of functions using get_admin_reply, using new Keyboards. But what if
+the user can choose not to use the keyboard, and then come up with something that screws up the program?
+Then I will have Exceptions, and the whole bot will go down. I need to test this possibility, and if it is really a
+worry, then I need to go through every file to look for the uses of this.
 """
 
 
@@ -68,7 +71,7 @@ from entry_attendance_functions import get_today_group_attendance, get_tomorrow_
     get_user_attendance_month, get_user_attendance_arbitrary
 from state_group_functions import create_group_follow_up, enter_group_implementation, delete_group_follow_up, \
     join_group_get_group_code, join_group_follow_up, quit_group_follow_up, change_group_title_follow_up, \
-    uprank_follow_up
+    uprank_follow_up, merge_groups_check_super_group, merge_groups_start_add_users, merge_groups_follow_up
 from state_user_functions import store_added_user, remove_user_verification, remove_user_follow_up, edit_user_follow_up
 from state_attendance_functions import change_today_attendance_follow_up, change_tomorrow_attendance_follow_up, \
     change_any_day_attendance_get_day, change_any_day_attendance_follow_up, \
@@ -197,7 +200,9 @@ def main():
     merge_groups_handler = ConversationHandler(
         entry_points=[CommandHandler('mergegroups', merge_groups)],
         states={
-
+            settings.FIRST: [MessageHandler(Filters.text, merge_groups_check_super_group)],
+            settings.SECOND: [MessageHandler(Filters.text, merge_groups_start_add_users)],
+            settings.THIRD: [MessageHandler(Filters.text, merge_groups_follow_up)]
         },
         fallbacks=[]
     )

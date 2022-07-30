@@ -620,3 +620,20 @@ def rank_determination(password: str, group_id: int) -> int:
     password_indices = [settings.ADMIN, settings.MEMBER, settings.OBSERVER]
 
     return password_indices[matching_index]
+
+
+# Gets the group_id from the button that user selects
+def get_group_id_from_button(message):
+    """Gets the group name and group id from the groups button"""
+
+    # How this works: The message is in the form {group_name} ({group_id}).
+    # So it just parses from the back and looks for the '(' symbol, to store the id.
+    group_name = ''
+    group_id = -1
+    for i in range(len(message) - 2, -1, -1):
+        if message[i] == '(':
+            group_name = message[:i - 1]
+            group_id = int(message[i + 1:len(message) - 1])
+            break
+
+    return group_id, group_name

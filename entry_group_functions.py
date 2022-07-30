@@ -63,12 +63,13 @@ def delete_group(update_obj: Update, context: CallbackContext) -> int:
 
 # Merges groups -> handle problem of merging with oneself (or not)
 def merge_groups(update_obj: Update, context: CallbackContext) -> int:
-    if not verify_group_and_role(update_obj, context, settings.ADMIN):
-        return ConversationHandler.END
 
     chat_id = update_obj.message.chat_id
-    groups_button_markup = group_name_keyboards(chat_id)
-    update_obj.message.reply_text("Which group do you want as the parent group?", reply_markup=groups_button_markup)
+    groups_button_markup = group_name_keyboards(chat_id, extra_options=['OK'])
+    update_obj.message.reply_text("Which group do you want as the parent group? If you want to merge all groups "
+                                  "under a new parent group, call /creategroup to create a new group first. "
+                                  "Type 'OK' to cancel ",
+                                  reply_markup=groups_button_markup)
     return settings.FIRST
 
 

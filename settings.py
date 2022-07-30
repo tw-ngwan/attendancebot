@@ -4,6 +4,7 @@ current_group_name = None
 temp_groups = {}  # For store_added_user in state_user_functions
 attendance_date_edit = {}  # For change_any_day_attendance_get_day in state_attendance_functions
 group_to_join = {}  # For join_group_get_group_code in state_group_functions
+merge_group_storage = {}  # For merge_group functions in entry_group_functions and state_group_functions
 OBSERVER, MEMBER, ADMIN = "Observer", "Member", "Admin"
 
 
@@ -14,6 +15,14 @@ class AttendanceRecord:
         self.attendance = []
 
 
+class MergeGroupStorage:
+
+    def __init__(self, parent):
+        self.parent = parent
+        self.join_all_groups = False
+        self.child_groups = set()
+
+
 def init():
     global current_group_id, current_group_name
     global FIRST, SECOND, THIRD
@@ -22,11 +31,13 @@ def init():
     global temp_groups
     global attendance_date_edit
     global group_to_join
+    global merge_group_storage
     current_group_id = None
     current_group_name = None
     FIRST, SECOND, THIRD = range(3)
     temp_groups = {}
     attendance_date_edit = {}
+    merge_group_storage = {}
     OBSERVER, MEMBER, ADMIN = "Observer", "Member", "Admin"
     help_message = """
 Here is a walkthrough of what each of the functions will do: 
