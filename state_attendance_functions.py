@@ -5,7 +5,7 @@ from telegram import Update
 from telegram.ext import CallbackContext, ConversationHandler
 import settings
 import datetime
-from backend_implementations import get_group_members, get_admin_reply, check_admin_privileges, check_valid_datetime, \
+from backend_implementations import get_admin_reply, check_valid_datetime, \
     get_day_group_attendance, change_group_attendance_backend, get_intended_users, get_single_user_attendance_backend, \
     convert_rank_to_id
 from entry_attendance_functions import _change_attendance_send_messages
@@ -131,7 +131,8 @@ def get_user_attendance_arbitrary_follow_up(update_obj: Update, context: Callbac
 # The backend process for getting attendance. Implemented by both get_user_attendance functions.
 def _get_user_attendance_process(update_obj: Update, context: CallbackContext, user_text: str,
                                  start_date: datetime.date, end_date: datetime.date) -> bool:
-    current_group = settings.current_group_id
+    chat_id = update_obj.message.chat_id
+    current_group = settings.current_group_id[chat_id]
     users = get_intended_users(user_text, current_group)
     if not users:
         update_obj.message.reply_text("Users not entered correctly!")

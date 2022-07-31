@@ -6,9 +6,8 @@ from telegram import Update
 from telegram.ext import CallbackContext, ConversationHandler
 import settings
 import datetime
-from backend_implementations import get_group_members, get_group_attendance_backend, check_admin_privileges, \
+from backend_implementations import get_group_attendance_backend, check_admin_privileges, \
     reply_non_admin, get_day_group_attendance, verify_group_and_role
-from keyboards import group_users_keyboard
 
 
 "https://stackoverflow.com/questions/48288124/how-to-send-message-in-specific-time-telegrambot"

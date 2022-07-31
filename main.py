@@ -65,14 +65,15 @@ import settings
 from entry_help_functions import start, user_help
 from entry_group_functions import create_group, enter_group, leave_group, current_group, delete_group, merge_groups, \
     join_existing_group, quit_group, change_group_title, uprank, get_group_passwords
-from entry_user_functions import add_users, get_users, remove_users, edit_users
+from entry_user_functions import add_users, get_users, remove_users, edit_users, change_group_ordering
 from entry_attendance_functions import get_today_group_attendance, get_tomorrow_group_attendance, \
     get_any_day_group_attendance, change_attendance, change_any_day_attendance, \
     get_user_attendance_month, get_user_attendance_arbitrary
-from state_group_functions import create_group_follow_up, enter_group_implementation, delete_group_follow_up, \
+from state_group_functions import create_group_follow_up, enter_group_follow_up, delete_group_follow_up, \
     join_group_get_group_code, join_group_follow_up, quit_group_follow_up, change_group_title_follow_up, \
     uprank_follow_up, merge_groups_check_super_group, merge_groups_start_add_users, merge_groups_follow_up
-from state_user_functions import store_added_user, remove_user_verification, remove_user_follow_up, edit_user_follow_up
+from state_user_functions import store_added_user, remove_user_verification, remove_user_follow_up, \
+    edit_user_follow_up, change_group_ordering_follow_up
 from state_attendance_functions import change_today_attendance_follow_up, change_tomorrow_attendance_follow_up, \
     change_any_day_attendance_get_day, change_any_day_attendance_follow_up, \
     get_specific_day_group_attendance_follow_up, get_user_attendance_month_follow_up, \
@@ -126,17 +127,17 @@ Here is a walkthrough of what each of the functions will do:
 /currentgroup: Returns the current group you are in, and None if not (Observer) 
 /deletegroup: Deletes the group. Needs Admin privileges, and prompt to do so (Admin) O X
 /mergegroups: Merges two groups together, with one becoming the parent group, and the other its child (Admin) O X 
-/joingroup: Joins a group that already exists, using its group id. (None) O X
-/quitgroup: Quits and exits your group. Do NOT confuse with leavegroup! (Observer) O X
-/changegrouptitle: Changes group title. Admin privileges required. (Admin) O X
-/getgrouppasswords: Returns the passwords that you need (can tag to the level that you are at) O X 
-/uprank: Increases the rank of the user O X 
+/joingroup: Joins a group that already exists, using its group id. (None) 
+/quitgroup: Quits and exits your group. Do NOT confuse with leavegroup! (Observer) 
+/changegrouptitle: Changes group title. Admin privileges required. (Admin) 
+/getgrouppasswords: Returns the passwords that you need (can tag to the level that you are at) 
+/uprank: Increases the rank of the user O X  #Can't use verify to verify, because you will send extra messages
 
 /addusers: Adds users to the group you are currently in (/entergroup). Recursive, till enter OK (Member)
 /removeusers: Removes users from the group you are currently in. Recursive, till enter OK (Admin)
 /editusers: Changes the names and details of the user (Admin)
 /getusers: Gets the names of all users (Observer)
-/changegroupordering: Swaps the ranks of two users (Member) O 
+/changegroupordering: Swaps the ranks of two users (Member) 
 
 /changeattendancetoday: Changes the attendance status of any group members of group you are currently in (Member)
 /changeattendancetomorrow: 
@@ -181,7 +182,7 @@ def main():
     enter_group_handler = ConversationHandler(
         entry_points=[CommandHandler('entergroup', enter_group)],
         states={
-            settings.FIRST: [MessageHandler(Filters.text, enter_group_implementation)],
+            settings.FIRST: [MessageHandler(Filters.text, enter_group_follow_up)],
         },
         fallbacks=[]
     )
@@ -266,6 +267,13 @@ def main():
         },
         fallbacks=[]
     )
+    change_group_ordering_handler = ConversationHandler(
+        entry_points=[CommandHandler('changegroupordering', change_group_ordering)],
+        states={
+            settings.FIRST: [MessageHandler(Filters.text, change_group_ordering_follow_up)]
+        },
+        fallbacks=[]
+    )
 
     # Attendance functions
     get_today_attendance_handler = ConversationHandler(
@@ -325,6 +333,7 @@ def main():
                     change_group_title_handler, get_group_passwords_handler, uprank_handler,
 
                     add_users_handler, get_users_handler, remove_users_handler, edit_users_handler,
+                    change_group_ordering_handler,
 
                     get_today_attendance_handler, get_tomorrow_attendance_handler, get_any_day_attendance_handler,
                     get_user_attendance_month_handler, get_user_attendance_arbitrary_handler,

@@ -9,7 +9,7 @@ from telegram.ext import ConversationHandler
 import settings
 from keyboards import yes_no_button_markup, group_name_keyboards
 from backend_implementations import generate_random_password, generate_random_group_code, \
-    get_admin_reply, get_admin_groups, rank_determination, get_group_id_from_button, check_admin_privileges
+    get_admin_reply, rank_determination, get_group_id_from_button, check_admin_privileges
 import sqlite3
 
 
@@ -24,7 +24,7 @@ def create_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
     # SQLite Execution: To store the group and the new user
     with sqlite3.connect('attendance.db') as con:
         cur = con.cursor()
-        current_group = settings.current_group_id
+        current_group = settings.current_group_id[chat_id]
         group_code = generate_random_group_code()
         observer_password, member_password, admin_password = generate_random_password(iterations=3)
         # Stores the group in SQLite
@@ -55,8 +55,8 @@ def create_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
         cur.execute("""SELECT id FROM groups WHERE GroupCode = ?""", (group_code,))
         group_to_enter = cur.fetchall()[0][0]
         print(group_to_enter)
-        settings.current_group_id = group_to_enter
-        settings.current_group_name = title
+        settings.current_group_id[chat_id] = group_to_enter
+        settings.current_group_name[chat_id] = title
         con.commit()
 
         # Adds the user as an Admin
@@ -90,19 +90,19 @@ def create_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
 
 
 # Enters a group
-def enter_group_implementation(update_obj: Update, context: CallbackContext) -> ConversationHandler.END:
+def enter_group_follow_up(update_obj: Update, context: CallbackContext) -> ConversationHandler.END:
     chat_id, title = get_admin_reply(update_obj, context)
 
     # Gets the group id from the title
     # The title is of the following form: '{group_name} ({group_id})'. So the code finds the bracket from the back
     group_id, group_name = get_group_id_from_button(title)
 
-    if group_id == -1:
+    if not group_id:
         update_obj.message.reply_text("Something went wrong, please try again!")
         return ConversationHandler.END
 
-    settings.current_group_id = group_id
-    settings.current_group_name = group_name
+    settings.current_group_id[chat_id] = group_id
+    settings.current_group_name[chat_id] = group_name
 
     update_obj.message.reply_text(f"Ok, you have entered {group_name}")
     return ConversationHandler.END
@@ -111,10 +111,10 @@ def enter_group_implementation(update_obj: Update, context: CallbackContext) -> 
 # Deletes the group that you are in
 def delete_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
     chat_id, message = get_admin_reply(update_obj, context)
-    current_group_id = settings.current_group_id
+    current_group_id = settings.current_group_id[chat_id]
 
     # Verify that user really wants to proceed with action
-    if message != "Yes":
+    if message.strip().lower() != "yes":
         update_obj.message.reply_text("Ok, cancelling job now. ")
         return ConversationHandler.END
 
@@ -131,8 +131,8 @@ def delete_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
         cur.execute("""DELETE FROM groups WHERE id = ?""", (current_group_id, ))
 
     # Leave the group
-    settings.current_group_id = None
-    settings.current_group_name = None
+    settings.current_group_id[chat_id] = None
+    settings.current_group_name[chat_id] = None
 
     return ConversationHandler.END
 
@@ -149,6 +149,7 @@ def join_group_get_group_code(update_obj: Update, context: CallbackContext) -> i
 
     if not group_details:
         update_obj.message.reply_text("Group code entered does not correspond with any group!")
+        return ConversationHandler.END
 
     group_id, group_name = group_details[0][0], group_details[0][1]
     settings.group_to_join[chat_id] = (group_id, group_name)
@@ -185,21 +186,21 @@ def join_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
         con.commit()
 
     # Saves the changes to group
-    settings.current_group_id = group_id
-    settings.current_group_name = group_name
+    settings.current_group_id[chat_id] = group_id
+    settings.current_group_name[chat_id] = group_name
 
     update_obj.message.reply_text(f"Congratulations, you are now a {user_rank} "
-                                  f"of {settings.current_group_name}!")
+                                  f"of {settings.current_group_name[chat_id]}!")
     return ConversationHandler.END
 
 
 # Quits the group you are currently in. Not to be confused with leavegroup!
 def quit_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
     chat_id, message = get_admin_reply(update_obj, context)
-    current_group_id = settings.current_group_id
+    current_group_id = settings.current_group_id[chat_id]
 
     # Verify that user really wants to proceed with action
-    if message != "Yes":
+    if message.strip().lower() != "yes":
         update_obj.message.reply_text("Ok, cancelling job now. ")
         return ConversationHandler.END
 
@@ -211,8 +212,8 @@ def quit_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
         )
 
     # Remove you from the current group
-    settings.current_group_id = None
-    settings.current_group_name = None
+    settings.current_group_id[chat_id] = None
+    settings.current_group_name[chat_id] = None
 
     update_obj.message.reply_text("Ok, you have quit the group. Enter a group now with /entergroup or "
                                   "join a new group with /joingroup")
@@ -223,7 +224,7 @@ def quit_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
 def change_group_title_follow_up(update_obj: Update, context: CallbackContext) -> int:
     chat_id, message = get_admin_reply(update_obj, context)
     group_name = message.strip()
-    group_id = settings.current_group_id
+    group_id = settings.current_group_id[chat_id]
 
     # Updates the group title for the group
     with sqlite3.connect('attendance.db') as con:
@@ -240,7 +241,7 @@ def change_group_title_follow_up(update_obj: Update, context: CallbackContext) -
         con.commit()
 
     # Updates the group name
-    settings.current_group_name = group_name
+    settings.current_group_name[chat_id] = group_name
 
     update_obj.message.reply_text("Group name updated")
     return ConversationHandler.END
@@ -250,7 +251,7 @@ def change_group_title_follow_up(update_obj: Update, context: CallbackContext) -
 def uprank_follow_up(update_obj: Update, context: CallbackContext) -> int:
     chat_id, message = get_admin_reply(update_obj, context)
     password = message.strip()
-    group_id = settings.current_group_id
+    group_id = settings.current_group_id[chat_id]
 
     user_rank = rank_determination(password, group_id)
     if not user_rank:
@@ -282,7 +283,7 @@ def merge_groups_check_super_group(update_obj: Update, context: CallbackContext)
         update_obj.message.reply_text("Ok, cancelling job now")
         return ConversationHandler.END
     # Stores the group that the user wants as the parent. First we get the group id
-    parent_id = get_group_id_from_button(parent_group)
+    parent_id, parent_name = get_group_id_from_button(parent_group)
     settings.merge_group_storage[chat_id] = settings.MergeGroupStorage(parent_id)
     update_obj.message.reply_text("Do you want to join all users into a super group? That is, all users become united "
                                   "into one group, rather than remain in their own groups under this new parent group.",
@@ -307,7 +308,7 @@ def merge_groups_follow_up(update_obj: Update, context: CallbackContext) -> int:
     merge_group_storage = settings.merge_group_storage[chat_id]
 
     # If message is ok, that means we can wrap up
-    if message == 'OK':
+    if message.strip().upper() == 'OK':
 
         # Get the parent group
         parent_id = merge_group_storage.parent
@@ -320,8 +321,8 @@ def merge_groups_follow_up(update_obj: Update, context: CallbackContext) -> int:
         # Check if all groups want to be joined together
         join_all_groups = merge_group_storage.join_all_groups
 
-        # Get all child groups
-        all_groups = list(merge_group_storage.child_groups)  # This is a set, take note
+        # Get all child groups. Ok one problem: Make sure that the parent group is not in the child_groups
+        all_groups = list(merge_group_storage.child_groups)
 
         # Update the sqlite database to reflect that the groups are merged
         with sqlite3.connect('attendance.db') as con:
@@ -370,12 +371,18 @@ def merge_groups_follow_up(update_obj: Update, context: CallbackContext) -> int:
         update_obj.message.reply_text("All groups have been merged")
         return ConversationHandler.END
 
-    group_id = get_group_id_from_button(message)
+    group_id, group_name = get_group_id_from_button(message)
     group_button_markup = group_name_keyboards(chat_id, extra_options=['OK'])
+    print(chat_id, group_id)
     # Check that you are group admin of the group that you want to add to
     if check_admin_privileges(chat_id, group_id) > 0:
         update_obj.message.reply_text("You need to be an admin of the group you want to merge!",
                                       reply_markup=group_button_markup)
+        return settings.THIRD
+
+    # Check that group added is not parent group
+    if group_id == merge_group_storage.parent:
+        update_obj.message.reply_text("Group added cannot be parent group!", reply_markup=group_button_markup)
         return settings.THIRD
 
     merge_group_storage.child_groups.add(group_id)

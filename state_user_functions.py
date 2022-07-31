@@ -1,6 +1,7 @@
 from telegram import Update
 from telegram.ext import CallbackContext, ConversationHandler
-from backend_implementations import get_admin_reply, get_intended_users, convert_rank_to_id
+from backend_implementations import get_admin_reply, get_intended_users, convert_rank_to_id, \
+    get_intended_user_swap_pairs, swap_users
 import settings
 import sqlite3
 
@@ -9,8 +10,8 @@ import sqlite3
 # Because it returns FIRST, it recursively calls itself (hopefully)
 def store_added_user(update_obj: Update, context: CallbackContext) -> int:
     chat_id, name = get_admin_reply(update_obj, context)
-    current_group = settings.current_group_id
-    if name == "OK":
+    current_group = settings.current_group_id[chat_id]
+    if name.upper().strip() == "OK":
         # If the dictionary exists, that means the group size has increased. We need to edit it.
         if current_group in settings.temp_groups:
             with sqlite3.connect('attendance.db') as con:
@@ -28,7 +29,7 @@ def store_added_user(update_obj: Update, context: CallbackContext) -> int:
                 # Remove the key from settings so that this is just a temp data storage
                 settings.temp_groups.pop(current_group)
 
-        update_obj.message.reply_text("Ok, quitting now...")
+        update_obj.message.reply_text("Ok, quitting now")
         return ConversationHandler.END
 
     # Adds the new name to users database
@@ -79,7 +80,7 @@ def remove_user_verification(update_obj: Update, context: CallbackContext) -> in
     chat_id, message = get_admin_reply(update_obj, context)
 
     # Verify that user really wants to proceed with action
-    if message != "Yes":
+    if message.strip().lower() != "yes":
         update_obj.message.reply_text("Ok, cancelling job now. ")
         return ConversationHandler.END
 
@@ -94,9 +95,9 @@ def remove_user_verification(update_obj: Update, context: CallbackContext) -> in
 # First, check that the indices are ok. Then use sqlite to remove the users from the list
 def remove_user_follow_up(update_obj: Update, context: CallbackContext) -> int:
     chat_id, user_text = get_admin_reply(update_obj, context)
-    current_group = settings.current_group_id
+    current_group = settings.current_group_id[chat_id]
 
-    if user_text == 'OK':
+    if user_text.strip().upper() == 'OK':
         update_obj.message.reply_text("Ok, cancelling job")
         return ConversationHandler.END
 
@@ -140,7 +141,7 @@ def edit_user_follow_up(update_obj: Update, context: CallbackContext) -> int:
         update_obj.message.reply_text("Ok, cancelling job")
         return ConversationHandler.END
 
-    current_group = settings.current_group_id
+    current_group = settings.current_group_id[chat_id]
     user_parameters = [[val.strip() for val in param.split(':')] for param in message.split('\n')]
 
     # Check that for each new line, there are two entries separated by a :
@@ -178,7 +179,18 @@ def edit_user_follow_up(update_obj: Update, context: CallbackContext) -> int:
 
 # Changes the group ordering
 def change_group_ordering_follow_up(update_obj: Update, context: CallbackContext) -> int:
-    pass
+    chat_id, message = get_admin_reply(update_obj, context)
+    group_id = settings.current_group_id[chat_id]
+    pairs_to_swap = get_intended_user_swap_pairs(message, group_id=group_id)
+    print(pairs_to_swap)
+    # Verify that user input is correct
+    if not pairs_to_swap:
+        update_obj.message.reply_text("Pairs keyed in in an incorrect format!")
+        return ConversationHandler.END
 
+    # Swaps all pairs of users in sequence
+    for (a, b) in pairs_to_swap:
+        swap_users(a, b, group_id)
 
-
+    update_obj.message.reply_text("All orderings swapped")
+    return ConversationHandler.END

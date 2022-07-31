@@ -10,9 +10,10 @@ from keyboards import yes_no_button_markup
 def add_users(update_obj: Update, context: CallbackContext) -> int:
 
     # Verify that user is authorised first
-    if verify_group_and_role(update_obj, context, settings.MEMBER):
+    if not verify_group_and_role(update_obj, context, settings.MEMBER):
         return ConversationHandler.END
 
+    print("After verification")
     update_obj.message.reply_text("Type in the name of the user you want to add. "
                                   "You can keep sending messages to add users. To indicate that you are done "
                                   "adding users, type 'OK'")
@@ -50,14 +51,15 @@ def edit_users(update_obj: Update, context: CallbackContext) -> int:
 
 # Gets a list of all users
 def get_users(update_obj: Update, context: CallbackContext) -> int:
-    if settings.current_group_id is None:
+    chat_id = update_obj.message.chat_id
+    if settings.current_group_id[chat_id] is None:
         update_obj.message.reply_text("Enter a group first with /entergroup!")
         return ConversationHandler.END
     update_obj.message.reply_text("Ok, getting all users...")
     with sqlite3.connect('attendance.db') as con:
-        current_group_id = settings.current_group_id
+        current_group_id = settings.current_group_id[chat_id]
         cur = con.cursor()
-        cur.execute("""SELECT Name FROM users WHERE group_id = ?""", (current_group_id, ))
+        cur.execute("""SELECT Name FROM users WHERE group_id = ? ORDER BY rank""", (current_group_id, ))
         names = [data[0] for data in cur.fetchall()]
 
     name_message = '\n'.join(["Members: "] + names)
@@ -89,7 +91,7 @@ def change_group_ordering(update_obj: Update, context: CallbackContext) -> int:
                                   "1 4 ")
     update_obj.message.reply_text("Resultant attendance \n"
                                   "1) Michael \n"
-                                  "2) Sophia \n "
+                                  "2) Sophia \n"
                                   "3) Harry \n"
                                   "4) Ethan ")
     update_obj.message.reply_text("Explanation: \nThe swaps are processed in order. For the first swap, "

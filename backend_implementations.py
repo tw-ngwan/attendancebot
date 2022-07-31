@@ -48,7 +48,7 @@ def get_admin_groups(chat_id):
         cur = con.cursor()
         cur.execute(
             """
-            SELECT groups.Name, admins.group_id, admins.role
+            SELECT groups.Name, admins.group_id, admins.role, groups.GroupCode
               FROM admins
               JOIN groups 
                 ON admins.group_id = groups.id 
@@ -87,19 +87,23 @@ def get_group_members(group_id):
 # Verifies that a user is in a group and has the privileges he needs to execute function
 def verify_group_and_role(update_obj: Update, context: CallbackContext, role: str) -> bool:
 
-    current_group_id = settings.current_group_id
+    # print("Verification starting")
+    current_group_id = settings.current_group_id[chat_id]
     chat_id = update_obj.message.chat_id
     role_index_dict = {settings.ADMIN: 0, settings.MEMBER: 1, settings.OBSERVER: 2, "Other": 3}
     # Verify that the user is in a group first
     if current_group_id is None:
+        # print("False verification")
         update_obj.message.reply_text("Enter a group first with /entergroup!")
         return False
 
     # Check that the user has the right privileges
     if check_admin_privileges(chat_id, current_group_id) > role_index_dict[role]:
+        # print("False verification")
         reply_non_admin(update_obj, context, role)
         return False
 
+    # print("Verification done")
     return True
 
 
@@ -190,7 +194,7 @@ def check_valid_datetime(date_to_check: str, date_compared: datetime.date = None
 def get_day_group_attendance(update_obj: Update, context: CallbackContext, day: datetime.date) -> None:
     # Verifies that the user is qualified to call this first
     chat_id = update_obj.message.chat_id
-    current_group_id = settings.current_group_id
+    current_group_id = settings.current_group_id[chat_id]
 
     if not verify_group_and_role(update_obj, context, "Observer"):
         return None
@@ -378,7 +382,7 @@ def change_group_attendance_backend(update_obj: Update, context: CallbackContext
         return None
 
     # Get the current group
-    current_group = settings.current_group_id
+    current_group = settings.current_group_id[chat_id]
 
     # First, we need to get the group's attendance. This helps to fill our database before we perform updates.
     get_group_attendance_backend(current_group, day)
@@ -597,7 +601,7 @@ def rank_determination(password: str, group_id: int) -> int:
         cur = con.cursor()
         cur.execute("""SELECT AdminPassword, MemberPassword, ObserverPassword FROM groups WHERE id = ?""",
                     (group_id, ))
-        group_passwords = cur.fetchall()
+        group_passwords = cur.fetchall()[0]
         con.commit()
 
     # Gets which codes are matching
@@ -618,15 +622,31 @@ def rank_determination(password: str, group_id: int) -> int:
 def get_group_id_from_button(message):
     """Gets the group name and group id from the groups button"""
 
-    # How this works: The message is in the form {group_name} ({group_id}).
+    # How this works: The message is in the form {group_name} ({group_code}).
     # So it just parses from the back and looks for the '(' symbol, to store the id.
-    group_name = ''
-    group_id = -1
+    # Ok I need a new implementation to be a little more robust. I will get the group code, and use it
+    # to get the group_id and group_name
+    message = message.strip()
+    group_code = -1
     for i in range(len(message) - 2, -1, -1):
         if message[i] == '(':
-            group_name = message[:i - 1]
-            group_id = int(message[i + 1:len(message) - 1])
+            group_code = message[i + 1:len(message) - 1]
             break
+
+    with sqlite3.connect('attendance.db') as con:
+        cur = con.cursor()
+        cur.execute(
+            """
+            SELECT id, Name 
+            FROM groups 
+            WHERE GroupCode = ?""",
+            (group_code, )
+        )
+        groups = cur.fetchall()
+        if not groups:
+            return False, False
+
+        group_id, group_name = groups[0][0], groups[0][1]
 
     return group_id, group_name
 
@@ -657,7 +677,7 @@ def get_intended_user_swap_pairs(message, group_id=None):
 def swap_users(a, b, group_id):
 
     # First, check if we are moving something to the bottom or top
-    if a or b == -1:
+    if a == -1 or b == -1:
         group_size = get_group_size(group_id)
 
         var = a if a > b else b  # This gets the actual group that is to be swapped (since the group > -1)
@@ -675,7 +695,9 @@ def swap_users(a, b, group_id):
 
             con.commit()
 
-    if a or b == 0:
+        return None
+
+    if a == 0 or b == 0:
         var = a if a > b else b  # This gets actual group, see above
         # This does the swapping
         with sqlite3.connect('attendance.db') as con:
@@ -689,7 +711,9 @@ def swap_users(a, b, group_id):
                 (var, group_id, var)
             )
 
+            con.commit()
 
+        return None
 
     # Now, we just swap values
     with sqlite3.connect('attendance.db') as con:

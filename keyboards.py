@@ -1,7 +1,7 @@
 """A list of keyboards that can be used across functions"""
 
 from telegram import KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
-from backend_implementations import get_admin_groups, get_group_members
+from backend_implementations import get_admin_groups
 
 
 # Button list for users to indicate boolean variables
@@ -12,24 +12,17 @@ yes_no_button_markup = ReplyKeyboardMarkup(keyboard=yes_no_button_list, resize_k
 
 # Gets a KeyboardMarkup of all group names
 # Each group name comprises of '{group_name} ({group_id})'. This enables me to get the group_id to update the settings.
-def group_name_keyboards(chat_id, extra_options=[]):
+def group_name_keyboards(chat_id, extra_options=None):
+    if extra_options is None:
+        extra_options = []
     user_groups = get_admin_groups(chat_id)
-    group_names = [[''.join([group[0], ' (', str(group[1]), ')'])] for group in user_groups]
+    group_names = [[''.join([group[0], ' (', str(group[3]), ')'])] for group in user_groups]
     # Adds the other options in extra_options
     for option in extra_options:
         group_names.append([option])
     groups_button_markup = ReplyKeyboardMarkup(keyboard=group_names, resize_keyboard=True,
                                                one_time_keyboard=True)
     return groups_button_markup
-
-
-# Gets a KeyboardMarkup of all group users
-def group_users_keyboard(group_id):
-    all_members = get_group_members(group_id)
-    users_names = [[''.join([member[1], ' (', str(member[0]), ')'])] for member in all_members]
-    users_button_markup = ReplyKeyboardMarkup(keyboard=users_names, resize_keyboard=True,
-                                              one_time_keyboard=True)
-    return users_button_markup
 
 
 
