@@ -10,7 +10,6 @@ To start tracking attendance, you first need to create a group.
 You can continue creating subgroups for each group (or each subgroup). Groups' relations are stored as trees (dj sets),
 with each group's parent group stored (if no parent, stored as 0).
 For each subgroup/group, you can add participants to the group.
-To add a participant, send a message with his name and ORD date (?)
 If you typoed and want to resend something, work on this.
 If you send a message that says end, then it stores everything.
 
@@ -60,7 +59,7 @@ worry, then I need to go through every file to look for the uses of this.
 
 
 import os
-import sqlite3
+from telegram.ext import Updater, ConversationHandler, CommandHandler, MessageHandler, Filters
 import settings
 from entry_help_functions import start, user_help
 from entry_group_functions import create_group, enter_group, leave_group, current_group, delete_group, merge_groups, \
@@ -78,17 +77,11 @@ from state_attendance_functions import change_today_attendance_follow_up, change
     change_any_day_attendance_get_day, change_any_day_attendance_follow_up, \
     get_specific_day_group_attendance_follow_up, get_user_attendance_month_follow_up, \
     get_user_attendance_arbitrary_follow_up
-from telegram.ext import Updater, ConversationHandler, CommandHandler, MessageHandler, Filters
 
 
 """What I will consider doing: 
 1. Add a group_title to settings.py 
 2. Change group_id to the group code """
-
-
-# from entry_functions import start, update_preferences, update_news, update_timing, user_help, exit_function, quit_bot
-# from state_variables import *
-# from state_functions import get_news_sources, get_num_articles, get_frequency, get_news_sources_specific
 
 
 API_KEY = os.getenv("ATTENDANCE_TELEGRAM_API")
@@ -125,7 +118,7 @@ Here is a walkthrough of what each of the functions will do:
 /entergroup: Enters group to do stuff in the group (Observer)
 /leavegroup: Leaves group you are currently in after you finish doing stuff (Observer) 
 /currentgroup: Returns the current group you are in, and None if not (Observer) 
-/deletegroup: Deletes the group. Needs Admin privileges, and prompt to do so (Admin) O X
+/deletegroup: Deletes the group. Needs Admin privileges, and prompt to do so (Admin) 
 /mergegroups: Merges two groups together, with one becoming the parent group, and the other its child (Admin) O X 
 /joingroup: Joins a group that already exists, using its group id. (None) 
 /quitgroup: Quits and exits your group. Do NOT confuse with leavegroup! (Observer) 

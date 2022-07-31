@@ -88,8 +88,8 @@ def get_group_members(group_id):
 def verify_group_and_role(update_obj: Update, context: CallbackContext, role: str) -> bool:
 
     # print("Verification starting")
-    current_group_id = settings.current_group_id[chat_id]
     chat_id = update_obj.message.chat_id
+    current_group_id = settings.current_group_id[chat_id]
     role_index_dict = {settings.ADMIN: 0, settings.MEMBER: 1, settings.OBSERVER: 2, "Other": 3}
     # Verify that the user is in a group first
     if current_group_id is None:
@@ -199,16 +199,65 @@ def get_day_group_attendance(update_obj: Update, context: CallbackContext, day: 
     if not verify_group_and_role(update_obj, context, "Observer"):
         return None
 
+    # Get the childgroups and recursively perform this function
+
     # Once user is verified, start getting attendance
     date_string = f"{day.day:02d}{day.month:02d}{day.year:04d}"  # day.year[2:]:04d
-    attendance_message_beginning = [f"Attendance for {date_string}:"]
-    if current_group_id is None:
-        update_obj.message.reply_text("Enter a group first with /entergroup!")
-        return None
-    attendance_message_body, attendance_message_summary = get_group_attendance_backend(current_group_id, day)
-    message = '\n'.join(attendance_message_beginning + ['\n'] + attendance_message_summary +
+    attendance_message_beginning = [f"*Attendance for {date_string}:*", ""]
+
+    attendance_message_body, attendance_status_dict = get_day_group_attendance_message_recursive(
+        day=day, group_id=current_group_id, attendance_message_body=[], attendance_status_dict={}
+    )
+
+    # We return the dictionary instead of the message, so that we can concatenate multiple dicts together
+    attendance_message_summary = [f"Strength: {sum(attendance_status_dict.values())}",
+                                  f"Present: {attendance_status_dict['P']}\n"] + \
+                                 [''.join([key, ": ", f"{attendance_status_dict[key]:02d}"])
+                                  for key in attendance_status_dict if key != 'P']
+
+    message = '\n'.join(attendance_message_beginning + [''] + attendance_message_summary +
                         ['\n'] + attendance_message_body)
     update_obj.message.reply_text(message)
+
+
+# The recursive implementation of get_day_group_attendance
+def get_day_group_attendance_message_recursive(day: datetime.date, group_id: int,
+                                               attendance_message_body: list, attendance_status_dict: dict):
+    # First, we find the groups that the group is a parent of
+    with sqlite3.connect('attendance.db') as con:
+        cur = con.cursor()
+        cur.execute(
+            """
+            SELECT id 
+              FROM groups 
+             WHERE parent_id = ?""", (group_id, )
+        )
+        parsed_message = cur.fetchall()
+        group_ids = [val[0] for val in parsed_message]
+
+    current_attendance_message_body, current_attendance_status_dict = get_group_attendance_backend(group_id, day)
+
+    # Updating attendance_message_body to include this new group
+    attendance_message_body += current_attendance_message_body
+    attendance_message_body.append('')
+
+    # Updating attendance_status_dict to include this new group
+    for key in current_attendance_status_dict:
+        attendance_status_dict.setdefault(key, 0)
+        attendance_status_dict[key] += current_attendance_status_dict[key]
+        # if key in attendance_status_dict:
+        #     attendance_status_dict[key] += current_attendance_status_dict[key]
+        # else:
+        #     attendance_status_dict[key] = current_attendance_status_dict[key]
+
+    # Recursively repeat this process for all child groups of that group
+    for id_val in group_ids:
+        attendance_message_body, attendance_status_dict = get_day_group_attendance_message_recursive(
+            day, id_val, attendance_message_body, attendance_status_dict
+        )
+
+    # After all child groups updated, return the message
+    return attendance_message_body, attendance_status_dict
 
 
 # Backend implementation to get user attendance
@@ -249,10 +298,10 @@ def get_group_attendance_backend(group_id: int, date: datetime.date = None):
 
         # group_attendance is a list of tuples; each tuple comprises (user_id, user_name, time_period, status)
         group_attendance = cur.fetchall()
-        # print(group_attendance)
+
         # Gets the number of time periods to be updated per day
-        cur.execute("""SELECT NumDailyReports FROM groups WHERE id = ?""", (group_id,))
-        num_daily_reports = cur.fetchall()[0][0]
+        cur.execute("""SELECT Name, NumDailyReports FROM groups WHERE id = ?""", (group_id,))
+        group_name, num_daily_reports = cur.fetchall()[0]
 
         # How this works:
         # I create a dict, that stores values like this: {id: [Name, [Attendance[0], Attendance[1], ...]]}
@@ -271,8 +320,8 @@ def get_group_attendance_backend(group_id: int, date: datetime.date = None):
         # Gets a summary of the attendance statuses of the entire group
         attendance_status_dict = defaultdict(int)
 
-        # Generates the message for the attendance of the remaining people
-        attendance_message_body = []
+        # Generates the message for the attendance of the remaining people. We first add the group_title ("" for \n)
+        attendance_message_body = [f"*{group_name}*", ""]
 
         # We need to keep the sequence so simple enum will not work
         for i in range(len(all_members)):
@@ -360,17 +409,18 @@ def get_group_attendance_backend(group_id: int, date: datetime.date = None):
         )
 
         print(attendance_status_dict)
-        attendance_message_summary = [f"Strength: {sum(attendance_status_dict.values())}",
-                                      f"Present: {attendance_status_dict['P']}\n"] + \
-                                     [''.join([key, ": ", f"{attendance_status_dict[key]:02d}"])
-                                         for key in attendance_status_dict if key != 'P']
-        print(attendance_message_summary)
+        # # I'm thinking of returning attendance_status_dict instead of this in order to concatenate values efficiently
+        # attendance_message_summary = [f"Strength: {sum(attendance_status_dict.values())}",
+        #                               f"Present: {attendance_status_dict['P']}\n"] + \
+        #                              [''.join([key, ": ", f"{attendance_status_dict[key]:02d}"])
+        #                                  for key in attendance_status_dict if key != 'P']
+        # print(attendance_message_summary)
 
         # Save changes
         con.commit()
 
     # Returns the body of the attendance message for people who need it
-    return attendance_message_body, attendance_message_summary
+    return attendance_message_body, attendance_status_dict
 
 
 # Changes the attendance of users on a specific day

@@ -1,9 +1,6 @@
 Work to do now: 
 
-For users, start implementing delete user functionality 
-Add functionality to change the ranks of users (swaps: top 0, bottom -1)
-Test more to check if invalid input will be accepted for attendance 
-
+ALL FUNCTIONS IMPLEMENTED!! 
 
 I have added weekend check functionality, but I probably need to do 
 something to make it more versatile (that is, select the days that you 
@@ -11,9 +8,13 @@ want). This will require a list of possible days
 
 
 Stuff left to do: 
-0. Add functionality to join, quit, and leave groups. And to become admin or member
-1. Add functionality to swap users' ranks, merge groups together 
-2. Edit the attendance to get attendance of group and child groups 
-3. Get the bot to ping the user every day. 
-4. Add encryption so that even if people have access, cannot use
+0. Edit the attendance to get attendance of group and child groups (done?)
+1. Get a function to transfer users between groups (that are merged)
+2. Get the bot to ping the user every day. 
+3. Add encryption so that even if people have access, cannot use
 https://stackoverflow.com/questions/40352927/how-do-i-edit-a-sent-message-using-telegrams-python-bot-api
+
+Changed the keyboards, but check that you changed ALL keyboards 
+
+
+

@@ -127,6 +127,8 @@ def delete_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
         cur.execute("""DELETE FROM users WHERE group_id = ?""", (current_group_id, ))
         # Delete from admins
         cur.execute("""DELETE FROM admins WHERE group_id = ?""", (current_group_id, ))
+        # Set its child groups to have no parent
+        cur.execute("""UPDATE groups SET parent_id = ? WHERE parent_id = ?""", (None, current_group_id))
         # Finally, delete the group
         cur.execute("""DELETE FROM groups WHERE id = ?""", (current_group_id, ))
 
