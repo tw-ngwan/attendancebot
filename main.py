@@ -59,25 +59,28 @@ worry, then I need to go through every file to look for the uses of this.
 
 
 import os
+
 from telegram.ext import Updater, ConversationHandler, CommandHandler, MessageHandler, Filters
+
 import settings
-from entry_help_functions import start, user_help
-from entry_group_functions import create_group, enter_group, leave_group, current_group, delete_group, merge_groups, \
-    join_existing_group, quit_group, change_group_title, uprank, get_group_passwords
-from entry_user_functions import add_users, get_users, remove_users, edit_users, change_group_ordering
 from entry_attendance_functions import get_today_group_attendance, get_tomorrow_group_attendance, \
     get_any_day_group_attendance, change_attendance, change_any_day_attendance, \
     get_user_attendance_month, get_user_attendance_arbitrary
-from state_group_functions import create_group_follow_up, enter_group_follow_up, delete_group_follow_up, \
-    join_group_get_group_code, join_group_follow_up, quit_group_follow_up, change_group_title_follow_up, \
-    uprank_follow_up, merge_groups_check_super_group, merge_groups_start_add_users, merge_groups_follow_up
-from state_user_functions import store_added_user, remove_user_verification, remove_user_follow_up, \
-    edit_user_follow_up, change_group_ordering_follow_up
+from entry_group_functions import create_group, enter_group, leave_group, current_group, delete_group, merge_groups, \
+    join_existing_group, quit_group, change_group_title, uprank, get_group_passwords
+from entry_help_functions import start, user_help
+from entry_user_functions import add_users, get_users, remove_users, edit_users, change_group_ordering, \
+    change_user_group
 from state_attendance_functions import change_today_attendance_follow_up, change_tomorrow_attendance_follow_up, \
     change_any_day_attendance_get_day, change_any_day_attendance_follow_up, \
     get_specific_day_group_attendance_follow_up, get_user_attendance_month_follow_up, \
     get_user_attendance_arbitrary_follow_up
-
+from state_group_functions import create_group_follow_up, enter_group_follow_up, delete_group_follow_up, \
+    join_group_get_group_code, join_group_follow_up, quit_group_follow_up, change_group_title_follow_up, \
+    uprank_follow_up, merge_groups_check_super_group, merge_groups_start_add_users, merge_groups_follow_up
+from state_user_functions import store_added_user, remove_user_verification, remove_user_follow_up, \
+    edit_user_follow_up, change_group_ordering_follow_up, change_user_group_get_initial, change_user_group_get_final, \
+    change_user_group_follow_up
 
 """What I will consider doing: 
 1. Add a group_title to settings.py 
@@ -131,6 +134,7 @@ Here is a walkthrough of what each of the functions will do:
 /editusers: Changes the names and details of the user (Admin)
 /getusers: Gets the names of all users (Observer)
 /changegroupordering: Swaps the ranks of two users (Member) 
+/changeusergroup: Transfers users from one group to another (Admin) 
 
 /changeattendancetoday: Changes the attendance status of any group members of group you are currently in (Member)
 /changeattendancetomorrow: 
@@ -267,6 +271,15 @@ def main():
         },
         fallbacks=[]
     )
+    change_group_users_handler = ConversationHandler(
+        entry_points=[CommandHandler('changeusergroup', change_user_group)],
+        states={
+            settings.FIRST: [MessageHandler(Filters.text, change_user_group_get_initial)],
+            settings.SECOND: [MessageHandler(Filters.text, change_user_group_get_final)],
+            settings.THIRD: [MessageHandler(Filters.text, change_user_group_follow_up)]
+        },
+        fallbacks=[]
+    )
 
     # Attendance functions
     get_today_attendance_handler = ConversationHandler(
@@ -326,7 +339,7 @@ def main():
                     change_group_title_handler, get_group_passwords_handler, uprank_handler,
 
                     add_users_handler, get_users_handler, remove_users_handler, edit_users_handler,
-                    change_group_ordering_handler,
+                    change_group_ordering_handler, change_group_users_handler,
 
                     get_today_attendance_handler, get_tomorrow_attendance_handler, get_any_day_attendance_handler,
                     get_user_attendance_month_handler, get_user_attendance_arbitrary_handler,

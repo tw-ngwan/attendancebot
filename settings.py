@@ -5,22 +5,26 @@ temp_groups = {}  # For store_added_user in state_user_functions
 attendance_date_edit = {}  # For change_any_day_attendance_get_day in state_attendance_functions
 group_to_join = {}  # For join_group_get_group_code in state_group_functions
 merge_group_storage = {}  # For merge_group functions in entry_group_functions and state_group_functions
+change_user_group_storage = {}  # For change_user_group functions in entry_user_functions and state_user_functions
 OBSERVER, MEMBER, ADMIN = "Observer", "Member", "Admin"
 
 
-class AttendanceRecord:
-
-    def __init__(self, name):
-        self.name = name
-        self.attendance = []
-
-
+# For storing of users when merging groups
 class MergeGroupStorage:
 
     def __init__(self, parent):
         self.parent = parent
         self.join_all_groups = False
         self.child_groups = set()
+
+
+# For changing the groups that users are part of
+class ChangeUserGroups:
+
+    def __init__(self, initial_group):
+        self.initial_group = initial_group
+        self.final_group = None
+        self.users = []
 
 
 def init():

@@ -3,7 +3,7 @@ from telegram.ext import CallbackContext, ConversationHandler
 import settings
 import sqlite3
 from backend_implementations import verify_group_and_role
-from keyboards import yes_no_button_markup
+from keyboards import yes_no_button_markup, group_name_keyboards
 
 
 # Adds a user to the bot
@@ -104,3 +104,14 @@ def change_group_ordering(update_obj: Update, context: CallbackContext) -> int:
                                   "key in his number along with -1 on the same line ")
 
     return settings.FIRST
+
+
+# Changes the group that a user is in
+def change_user_group(update_obj: Update, context: CallbackContext) -> int:
+    """This function changes the group that users are in"""
+    chat_id = update_obj.message.chat_id
+    groups_button_markup = group_name_keyboards(chat_id, extra_options=['OK'])
+    update_obj.message.reply_text("Which group do you want to get the users from? To cancel, press OK",
+                                  reply_markup=groups_button_markup)
+    return settings.FIRST
+

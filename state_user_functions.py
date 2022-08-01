@@ -1,7 +1,8 @@
 from telegram import Update
 from telegram.ext import CallbackContext, ConversationHandler
 from backend_implementations import get_admin_reply, get_intended_users, convert_rank_to_id, \
-    get_intended_user_swap_pairs, swap_users
+    get_intended_user_swap_pairs, swap_users, get_group_id_from_button
+from keyboards import group_name_keyboards
 import settings
 import sqlite3
 
@@ -193,4 +194,116 @@ def change_group_ordering_follow_up(update_obj: Update, context: CallbackContext
         swap_users(a, b, group_id)
 
     update_obj.message.reply_text("All orderings swapped")
+    return ConversationHandler.END
+
+
+# Change user group: Gets the group that the users are to be transferred from, and asks for the final group
+def change_user_group_get_initial(update_obj: Update, context: CallbackContext) -> int:
+    chat_id, group_message = get_admin_reply(update_obj, context)
+
+    # Tests that the group id is valid (or that OK is not entered)
+    group_id, group_name = get_group_id_from_button(group_message)
+    if not group_id:
+        update_obj.message.reply_text("Ok, cancelling job now")
+        return ConversationHandler.END
+
+    # Stores the initial group id
+    settings.change_user_group_storage[chat_id] = settings.ChangeUserGroups(group_id)
+
+    groups_button_markup = group_name_keyboards(chat_id)
+    # Asks the user for the final group that users are to be transferred to
+    update_obj.message.reply_text("Which group do you want the users to be transferred to?",
+                                  reply_markup=groups_button_markup)
+    return settings.SECOND
+
+
+# Change user group: Gets the final group, and asks for the list of users that are to be transferred
+def change_user_group_get_final(update_obj: Update, context: CallbackContext) -> int:
+    chat_id, group_message = get_admin_reply(update_obj, context)
+
+    # Tests that the group id is valid (or that OK is not entered)
+    group_id, group_name = get_group_id_from_button(group_message)
+    if not group_id:
+        update_obj.message.reply_text("Ok, cancelling job now")
+        return ConversationHandler.END
+
+    # Stores the final group id, and checks that it is not the same as the initial group
+    if group_id == settings.change_user_group_storage[chat_id].initial_group:
+        update_obj.message.reply_text("Initial and final group cannot be the same!")
+        return ConversationHandler.END
+    settings.change_user_group_storage[chat_id].final_group = group_id
+
+    # Asks the user to key in the list of users that he wants transferred from the initial group
+    update_obj.message.reply_text("Type in the numbers of the users you want to move from the initial group, "
+                                  "separated by spaces. To cancel, type 'OK'. Eg: (1 3 2)")
+
+    return settings.THIRD
+
+
+# Change user group: Changes the group that the users are in
+def change_user_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
+    chat_id, message = get_admin_reply(update_obj, context)
+
+    initial_group = settings.change_user_group_storage[chat_id].initial_group
+    final_group = settings.change_user_group_storage[chat_id].final_group
+
+    # Check that the user wants to proceed with the job first
+    if message.strip().lower() == 'yes':
+        update_obj.message.reply_text("Ok, cancelling job now")
+        return ConversationHandler.END
+
+    # Check that the user input is valid, and get the list of users that he wants
+    # Keeps the order in which users were inputted
+    users = get_intended_users(message, initial_group)
+    if not users:
+        update_obj.message.reply_text("Users not entered correctly!")
+        return ConversationHandler.END
+
+    # Preserve order
+    users.sort()
+
+    # Gets the ids of all users
+    user_ids = [convert_rank_to_id(initial_group, rank) for rank in users]
+
+    # First, we get the group_size of the final group, so that we can assign the rank
+    # Next, we add all users from the initial group to the final group
+    # Finally, we change the ranks of the initial group to make it correct once again
+    with sqlite3.connect('attendance.db') as con:
+        cur = con.cursor()
+
+        # Get the group sizes
+        cur.execute("""SELECT COUNT(*) FROM users WHERE group_id = ?""", (final_group, ))
+        final_group_size = cur.fetchall()[0][0]
+        cur.execute("""SELECT COUNT(*) FROM users WHERE group_id = ?""", (initial_group, ))
+        initial_group_size = cur.fetchall()[0][0]
+
+        # The list that is passed to the executemany to update the groups of the users
+        user_parameters = [(final_group, i + final_group_size + 1, user_ids[i]) for i in range(len(user_ids))]
+
+        # Updates the users table to change the groups of the users
+        cur.executemany(
+            """
+            UPDATE users
+               SET group_id = ?, rank = ?
+             WHERE id = ? 
+            """, user_parameters
+        )
+
+        # Now, updates the users table to change the ranks of the original users
+        initial_user_parameters = [(i, initial_group) for i in range(1, initial_group_size + 1)]
+        cur.executemany(
+            """
+            UPDATE users
+               SET rank = ? 
+             WHERE id IN (SELECT id 
+                            FROM users
+                           WHERE group_id = ?
+                           ORDER BY rank
+            )""", initial_user_parameters
+        )
+
+        # Save changes
+        con.commit()
+
+    update_obj.message.reply_text("All users shifted")
     return ConversationHandler.END
