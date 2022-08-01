@@ -8,8 +8,7 @@ NumDailyReports  INTEGER NOT NULL,
 GroupCode           TEXT UNIQUE NOT NULL, 
 ObserverPassword    TEXT NOT NULL, 
 MemberPassword      TEXT NOT NULL, 
-AdminPassword       TEXT NOT NULL,  
-group_size       INTEGER NOT NULL, 
+AdminPassword       TEXT NOT NULL, 
 FOREIGN KEY(parent_id) REFERENCES groups(id)
 );
 

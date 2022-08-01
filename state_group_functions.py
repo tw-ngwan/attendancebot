@@ -27,29 +27,17 @@ def create_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
         current_group = settings.current_group_id[chat_id]
         group_code = generate_random_group_code()
         observer_password, member_password, admin_password = generate_random_password(iterations=3)
-        # Stores the group in SQLite
-        if current_group is None:
-            cur.execute(
-                """
-                INSERT INTO groups (
-                Name, DateAdded, NumDailyReports, GroupCode, 
-                ObserverPassword, MemberPassword, AdminPassword, group_size
-                )
-                VALUES (?, datetime('now'), 2, ?, ?, ?, ?, 0)
-                """,
-                (title, group_code, observer_password, member_password, admin_password)
+        # Stores the group in SQLite. current_group can be None
+        cur.execute(
+            """
+            INSERT INTO groups (
+            parent_id, Name, DateAdded, NumDailyReports, GroupCode, 
+            ObserverPassword, MemberPassword, AdminPassword, group_size
             )
-        else:
-            cur.execute(
-                """
-                INSERT INTO groups (
-                parent_id, Name, DateAdded, NumDailyReports, GroupCode, 
-                ObserverPassword, MemberPassword, AdminPassword, group_size
-                )
-                VALUES (?, ?, datetime('now'), 2, ?, ?, ?, ?, 0)
-                """,
-                (current_group, title, group_code, observer_password, member_password, admin_password)
-            )
+            VALUES (?, ?, datetime('now'), 2, ?, ?, ?, ?)
+            """,
+            (current_group, title, group_code, observer_password, member_password, admin_password)
+        )
 
         # Enter the group
         cur.execute("""SELECT id FROM groups WHERE GroupCode = ?""", (group_code,))

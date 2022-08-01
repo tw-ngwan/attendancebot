@@ -111,6 +111,9 @@ def get_group_passwords(update_obj: Update, context: CallbackContext) -> int:
 
     chat_id = update_obj.message.chat_id
     current_group_id = settings.current_group_id[chat_id]
+    if current_group_id is None:
+        update_obj.message.reply_text("Enter a group first with /entergroup!")
+        return ConversationHandler.END
 
     admin_status = check_admin_privileges(chat_id, current_group_id)
 

@@ -17,23 +17,44 @@ from backend_implementations import get_group_attendance_backend, check_admin_pr
 # Need to get the actual status of everyone from the table
 # Make TimePeriod 1-indexed
 def get_today_group_attendance(update_obj: Update, context: CallbackContext) -> int:
+    # Get the whole group's id
+    chat_id = update_obj.message.chat_id
+    current_group = settings.current_group_id[chat_id]
     today = datetime.date.today()
-    get_day_group_attendance(update_obj, context, today)
+    # Ensures that the day that is gotten is a weekday
+    while today.weekday() > 4:
+        today += datetime.timedelta(days=1)
+    # Verify observer status
+    if not verify_group_and_role(update_obj, context, settings.OBSERVER):
+        return ConversationHandler.END
+
+    get_day_group_attendance(context, today, current_group)
     return ConversationHandler.END
 
 
 # Gets the attendance of the group for the next day
 def get_tomorrow_group_attendance(update_obj: Update, context: CallbackContext) -> int:
+    # Get the whole group's id
+    chat_id = update_obj.message.chat_id
+    current_group = settings.current_group_id[chat_id]
     # Gets the next weekday
     tomorrow = datetime.date.today() + datetime.timedelta(days=1)
     while tomorrow.weekday() > 4:
         tomorrow += datetime.timedelta(days=1)
-    get_day_group_attendance(update_obj, context, tomorrow)
+    # Verify observer status
+    if not verify_group_and_role(update_obj, context, settings.OBSERVER):
+        return ConversationHandler.END
+
+    get_day_group_attendance(context, tomorrow, current_group)
     return ConversationHandler.END
 
 
 # Gets the attendance of the group on a specific day
 def get_any_day_group_attendance(update_obj: Update, context: CallbackContext) -> int:
+    # Verify member status
+    if not verify_group_and_role(update_obj, context, settings.MEMBER):
+        return ConversationHandler.END
+
     update_obj.message.reply_text("Which day's attendance would you like to get? "
                                   "In your next message, please enter the desired date (and nothing else) in "
                                   "6-digit form (eg: 210722)")

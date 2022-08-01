@@ -7,6 +7,7 @@ import settings
 import sqlite3
 import datetime
 from dateutil import tz
+from backend_implementations import get_day_group_attendance
 
 
 # Entry function
@@ -30,13 +31,63 @@ def start(update_obj: Update, context: CallbackContext) -> ConversationHandler.E
     SGT = tz.gettz('Asia/Singapore')
     Defaults.tzinfo = SGT
 
-    # Starts running the repeated functions daily
-    # context.job_queue.run_daily(trial_function, time=datetime.time(hour=11, minute=39, tzinfo=SGT),
-    #                             context=update_obj.message.chat_id)
-    # context.job_queue.run_repeating(trial_function_two, interval=5, first=10, context=update_obj.message.chat_id)
-    # context.job_queue.run_repeating(trial_function, interval=10, first=30, context=update_obj.message.chat_id)
+    # Starts running the repeated functions daily:
+    # Sends today's attendance at 6am, tomorrow's attendance at 2pm and 9pm
+    context.job_queue.run_daily(get_today_attendance, time=datetime.time(hour=6, minute=0, tzinfo=SGT),
+                                context=update_obj.message.chat_id)
+    context.job_queue.run_daily(get_tomorrow_attendance, time=datetime.time(hour=14, minute=0, tzinfo=SGT),
+                                context=update_obj.message.chat_id)
+    context.job_queue.run_daily(get_tomorrow_attendance, time=datetime.time(hour=21, minute=0, tzinfo=SGT),
+                                context=update_obj.message.chat_id)
+    # context.job_queue.run_repeating(get_today_attendance, interval=10, first=10, context=update_obj.message.chat_id)
+    # context.job_queue.run_repeating(get_today_attendance, interval=8, first=20, context=update_obj.message.chat_id)
 
     return ConversationHandler.END
+
+
+# Gets today's attendance and sends it
+def get_today_attendance(context: CallbackContext):
+    # First, we get the groups that the user is in
+    group_ids = get_admin_groups(context)
+    today = datetime.date.today()
+    while today.weekday() > 4:
+        today += datetime.timedelta(days=1)
+
+    # Next, we get the group attendance for each of the groups
+    for group_id in group_ids:
+        get_day_group_attendance(context, today, group_id)
+
+
+# Gets tomorrow's attendance and sends it
+def get_tomorrow_attendance(context: CallbackContext):
+    # First, we get the groups that the user is in
+    group_ids = get_admin_groups(context)
+    tomorrow = datetime.date.today() + datetime.timedelta(days=1)
+    while tomorrow.weekday() > 4:
+        tomorrow += datetime.timedelta(days=1)
+
+    # We get the group attendance for each of the groups
+    for group_id in group_ids:
+        get_day_group_attendance(context, tomorrow, group_id)
+
+
+# Gets the groups that the user is in
+def get_admin_groups(context: CallbackContext):
+    chat_id = context.job.context
+    # We use sqlite to get the groups that the user is in
+    with sqlite3.connect('attendance.db') as con:
+        cur = con.cursor()
+        cur.execute(
+            """
+            SELECT group_id 
+              FROM admins
+             WHERE chat_id = ?""", (chat_id, )
+        )
+        parsed_info = cur.fetchall()
+        group_ids = [group_id[0] for group_id in parsed_info]
+
+    print(group_ids)
+    return group_ids
 
 
 "https://stackoverflow.com/questions/59611662/how-to-send-message-from-bot-to-user-at-a-fixed-time-or-at-intervals-through-pyt"

@@ -1,5 +1,13 @@
 """
-This code is copied from NewsBot
+
+I FINISHED THE CODE!!!!!
+OK not really done, still have encryption.
+But here's what you need to do:
+1. Do a stress test yourself, to ensure that all functions are working. Try more functions with mergegroup, and stuff
+2. Edit this file to make the code clearer, edit away all the useless/outdated stuff
+3. Maybe create a new helpbasic function that explains only the necessary functions, and a full help function
+4. After you deploy the code and users can use it, start encrypting all the data for users to use
+4. After you deploy the code and users can use it, start encrypting all the data for users to use
 
 Here's the functionality that you want the bot to have first
 First, SQLite for storage
@@ -78,7 +86,7 @@ from state_attendance_functions import change_today_attendance_follow_up, change
 from state_group_functions import create_group_follow_up, enter_group_follow_up, delete_group_follow_up, \
     join_group_get_group_code, join_group_follow_up, quit_group_follow_up, change_group_title_follow_up, \
     uprank_follow_up, merge_groups_check_super_group, merge_groups_start_add_users, merge_groups_follow_up
-from state_user_functions import store_added_user, remove_user_verification, remove_user_follow_up, \
+from state_user_functions import add_user_follow_up, remove_user_verification, remove_user_follow_up, \
     edit_user_follow_up, change_group_ordering_follow_up, change_user_group_get_initial, change_user_group_get_final, \
     change_user_group_follow_up
 
@@ -242,7 +250,7 @@ def main():
     add_users_handler = ConversationHandler(
         entry_points=[CommandHandler('addusers', add_users)],
         states={
-            settings.FIRST: [MessageHandler(Filters.text, store_added_user)]
+            settings.FIRST: [MessageHandler(Filters.text, add_user_follow_up)]
         },
         fallbacks=[]
     )

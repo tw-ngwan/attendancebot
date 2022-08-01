@@ -23,6 +23,8 @@ from entry_attendance_functions import _change_attendance_send_messages
 # Change today's attendance
 def change_today_attendance_follow_up(update_obj: Update, context: CallbackContext) -> int:
     today = datetime.date.today()
+    while today.weekday() > 4:
+        today += datetime.timedelta(days=1)
     change_group_attendance_backend(update_obj, context, today)
     return ConversationHandler.END
 
@@ -30,6 +32,8 @@ def change_today_attendance_follow_up(update_obj: Update, context: CallbackConte
 # Changes tomorrow's attendance
 def change_tomorrow_attendance_follow_up(update_obj: Update, context: CallbackContext) -> int:
     tomorrow = datetime.date.today() + datetime.timedelta(days=1)
+    while tomorrow.weekday() > 4:
+        tomorrow += datetime.timedelta(days=1)
     change_group_attendance_backend(update_obj, context, tomorrow)
     return ConversationHandler.END
 
@@ -71,6 +75,7 @@ def change_any_day_attendance_follow_up(update_obj: Update, context: CallbackCon
 # Follow-up function of get_specific_day_group_attendance
 def get_specific_day_group_attendance_follow_up(update_obj: Update, context: CallbackContext) -> int:
     chat_id, date = get_admin_reply(update_obj, context)
+    current_group = settings.current_group_id[chat_id]
     # Gets the date in the form of a datetime object
     day_to_check = check_valid_datetime(date)
     if not day_to_check:
@@ -82,7 +87,7 @@ def get_specific_day_group_attendance_follow_up(update_obj: Update, context: Cal
         update_obj.message.reply_text("Date is a weekend!")
         return ConversationHandler.END
 
-    get_day_group_attendance(update_obj, context, day_to_check)
+    get_day_group_attendance(context, day_to_check, current_group)
     return ConversationHandler.END
 
 

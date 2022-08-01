@@ -1,7 +1,7 @@
 from telegram import Update
 from telegram.ext import CallbackContext, ConversationHandler
 from backend_implementations import get_admin_reply, get_intended_users, convert_rank_to_id, \
-    get_intended_user_swap_pairs, swap_users, get_group_id_from_button
+    get_intended_user_swap_pairs, swap_users, get_group_id_from_button, get_group_size
 from keyboards import group_name_keyboards
 import settings
 import sqlite3
@@ -9,70 +9,30 @@ import sqlite3
 
 # Stores added user from add_users
 # Because it returns FIRST, it recursively calls itself (hopefully)
-def store_added_user(update_obj: Update, context: CallbackContext) -> int:
+def add_user_follow_up(update_obj: Update, context: CallbackContext) -> int:
     chat_id, name = get_admin_reply(update_obj, context)
+    name = name.strip()
     current_group = settings.current_group_id[chat_id]
-    if name.upper().strip() == "OK":
-        # If the dictionary exists, that means the group size has increased. We need to edit it.
-        if current_group in settings.temp_groups:
-            with sqlite3.connect('attendance.db') as con:
-                cur = con.cursor()
-                # Commit changes to groups table
-                cur.execute(
-                    """
-                    UPDATE groups
-                       SET group_size = ?
-                     WHERE id = ?
-                    """,
-                    (settings.temp_groups[current_group], current_group)
-                )
-
-                # Remove the key from settings so that this is just a temp data storage
-                settings.temp_groups.pop(current_group)
-
+    # If user types ok, that means that all users are added
+    if name.upper() == "OK":
         update_obj.message.reply_text("Ok, quitting now")
         return ConversationHandler.END
 
-    # Adds the new name to users database
+    # Adds the user into the group otherwise
     with sqlite3.connect('attendance.db') as con:
         cur = con.cursor()
-
-        # We use settings.temp_groups in order to find the number of users in the group
-        # This stores the value temporarily in a dict, so that the number of users does not need to keep getting called
-        if current_group in settings.temp_groups:
-            # Since num_users is already present, just gets it from the dict
-            num_users = settings.temp_groups[current_group]
-        else:
-            # Finds the current number of users
-            cur.execute(
-                """ 
-                SELECT COUNT(*) 
-                  FROM users 
-                 WHERE users.id = ?
-                """,
-                (current_group, )
-            )
-            num_users = cur.fetchall()[0][0]
-            settings.temp_groups[current_group] = num_users
+        # Find current number of users, so that the group rank can be increased
+        group_size = get_group_size(current_group)
 
         # Adds user
         cur.execute(
-            """
-            INSERT INTO users (
-            group_id, Name, DateAdded, rank
-            ) 
+            """INSERT INTO users
+            (group_id, Name, DateAdded, rank)
             VALUES (?, ?, datetime('now'), ?)
-            """,
-            (current_group, name, num_users + 1)
+            """, (current_group, name, group_size + 1)
         )
 
-        # Updates the dictionary so that we have an accurate store of value to be called in the next iteration
-        settings.temp_groups[current_group] += 1
-
-        # Saves changes
-        con.commit()
-
-    update_obj.message.reply_text(f"User {name} added. ")
+    update_obj.message.reply_text(f"Ok, {name} added")
     return settings.FIRST
 
 
@@ -272,10 +232,8 @@ def change_user_group_follow_up(update_obj: Update, context: CallbackContext) ->
         cur = con.cursor()
 
         # Get the group sizes
-        cur.execute("""SELECT COUNT(*) FROM users WHERE group_id = ?""", (final_group, ))
-        final_group_size = cur.fetchall()[0][0]
-        cur.execute("""SELECT COUNT(*) FROM users WHERE group_id = ?""", (initial_group, ))
-        initial_group_size = cur.fetchall()[0][0]
+        final_group_size = get_group_size(final_group)
+        initial_group_size = get_group_size(initial_group)
 
         # The list that is passed to the executemany to update the groups of the users
         user_parameters = [(final_group, i + final_group_size + 1, user_ids[i]) for i in range(len(user_ids))]
@@ -290,16 +248,25 @@ def change_user_group_follow_up(update_obj: Update, context: CallbackContext) ->
         )
 
         # Now, updates the users table to change the ranks of the original users
-        initial_user_parameters = [(i, initial_group) for i in range(1, initial_group_size + 1)]
+        initial_user_parameters = [(i, initial_group, i, initial_group) for i in range(initial_group_size, 0, -1)]
         cur.executemany(
+            # Try and see if this can be cut down
             """
             UPDATE users
                SET rank = ? 
-             WHERE id IN (SELECT id 
-                            FROM users
-                           WHERE group_id = ?
-                           ORDER BY rank
-            )""", initial_user_parameters
+             WHERE id = (SELECT id 
+                           FROM users 
+                          WHERE group_id = ? 
+                            AND rank = (SELECT MIN(rank)
+                                           FROM users
+                                          WHERE rank >= ?
+                                            AND group_id = ?
+                            )
+            )
+            """, initial_user_parameters
+            # Oops this thing doesn't work because it updates all ranks at once
+            # I need something that updates each inidividual rank one by one...
+            # This still does not work. Check how you can do individual
         )
 
         # Save changes

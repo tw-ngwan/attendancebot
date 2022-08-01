@@ -13,7 +13,6 @@ def add_users(update_obj: Update, context: CallbackContext) -> int:
     if not verify_group_and_role(update_obj, context, settings.MEMBER):
         return ConversationHandler.END
 
-    print("After verification")
     update_obj.message.reply_text("Type in the name of the user you want to add. "
                                   "You can keep sending messages to add users. To indicate that you are done "
                                   "adding users, type 'OK'")
@@ -110,6 +109,10 @@ def change_group_ordering(update_obj: Update, context: CallbackContext) -> int:
 def change_user_group(update_obj: Update, context: CallbackContext) -> int:
     """This function changes the group that users are in"""
     chat_id = update_obj.message.chat_id
+    # Verify that user is authorized to carry out function
+    if not verify_group_and_role(update_obj, context, settings.ADMIN):
+        return ConversationHandler.END
+
     groups_button_markup = group_name_keyboards(chat_id, extra_options=['OK'])
     update_obj.message.reply_text("Which group do you want to get the users from? To cancel, press OK",
                                   reply_markup=groups_button_markup)

@@ -7,14 +7,14 @@ something to make it more versatile (that is, select the days that you
 want). This will require a list of possible days 
 
 
-Stuff left to do: 
-0. Edit the attendance to get attendance of group and child groups (done?)
-1. Get a function to transfer users between groups (that are merged)
-2. Get the bot to ping the user every day. 
-3. Add encryption so that even if people have access, cannot use
+Stuff left to do:
+0. Change the help message, probably add a helpbasic. 
+Also make function names easier 
+0. Add encryption so that even if people have access, cannot use
 https://stackoverflow.com/questions/40352927/how-do-i-edit-a-sent-message-using-telegrams-python-bot-api
 
 Changed the keyboards, but check that you changed ALL keyboards 
 
 
 
+Change the function names to become shorter 

@@ -1,6 +1,7 @@
 """File that only contains the state variables"""
-current_group_id = {}
-current_group_name = {}
+from collections import defaultdict
+current_group_id = defaultdict(lambda: None)
+current_group_name = defaultdict(lambda: None)
 temp_groups = {}  # For store_added_user in state_user_functions
 attendance_date_edit = {}  # For change_any_day_attendance_get_day in state_attendance_functions
 group_to_join = {}  # For join_group_get_group_code in state_group_functions
@@ -36,8 +37,8 @@ def init():
     global attendance_date_edit
     global group_to_join
     global merge_group_storage
-    current_group_id = {}
-    current_group_name = {}
+    current_group_id = defaultdict(lambda: None)
+    current_group_name = defaultdict(lambda: None)
     FIRST, SECOND, THIRD = range(3)
     temp_groups = {}
     attendance_date_edit = {}

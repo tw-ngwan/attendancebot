@@ -191,13 +191,11 @@ def check_valid_datetime(date_to_check: str, date_compared: datetime.date = None
 
 
 # Gets group's attendance on a certain day
-def get_day_group_attendance(update_obj: Update, context: CallbackContext, day: datetime.date) -> None:
+def get_day_group_attendance(context: CallbackContext, day: datetime.date, current_group_id: int) -> None:
     # Verifies that the user is qualified to call this first
-    chat_id = update_obj.message.chat_id
-    current_group_id = settings.current_group_id[chat_id]
+    chat_id = context.job.context
 
-    if not verify_group_and_role(update_obj, context, "Observer"):
-        return None
+    # Verification done in the main function so no use for update_obj
 
     # Get the childgroups and recursively perform this function
 
@@ -217,7 +215,7 @@ def get_day_group_attendance(update_obj: Update, context: CallbackContext, day: 
 
     message = '\n'.join(attendance_message_beginning + [''] + attendance_message_summary +
                         ['\n'] + attendance_message_body)
-    update_obj.message.reply_text(message)
+    context.bot.send_message(chat_id=chat_id, text=message)
 
 
 # The recursive implementation of get_day_group_attendance
@@ -635,11 +633,11 @@ def convert_rank_to_id(group_id, user_rank) -> int:
         cur.execute(
             """SELECT id FROM users WHERE group_id = ? AND rank = ?""", (group_id, user_rank)
         )
-        result = cur.fetchall()[0][0]
+        result = cur.fetchall()
         con.commit()
 
-    # If not exists, returns False
-    return result if result else 0
+    # If not exists, return False, else return True
+    return 0 if not result else result[0][0]
 
 
 # Determines the rank of a user in a group. Used by join_group_follow_up and uprank_follow_up
