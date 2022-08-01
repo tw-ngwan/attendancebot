@@ -40,8 +40,19 @@ def start(update_obj: Update, context: CallbackContext) -> ConversationHandler.E
     context.job_queue.run_daily(get_tomorrow_attendance, time=datetime.time(hour=21, minute=0, tzinfo=SGT),
                                 context=update_obj.message.chat_id)
     # context.job_queue.run_repeating(get_today_attendance, interval=10, first=10, context=update_obj.message.chat_id)
-    # context.job_queue.run_repeating(get_today_attendance, interval=8, first=20, context=update_obj.message.chat_id)
 
+    return ConversationHandler.END
+
+
+# Sends user help
+def user_help(update_obj: Update, context: CallbackContext) -> int:
+    update_obj.message.reply_text(settings.help_message)
+    return ConversationHandler.END
+
+
+# Sends user the full help message
+def user_help_full(update_obj: Update, context: CallbackContext) -> int:
+    update_obj.message.reply_text(settings.full_help_message)
     return ConversationHandler.END
 
 
@@ -88,73 +99,3 @@ def get_admin_groups(context: CallbackContext):
 
     print(group_ids)
     return group_ids
-
-
-"https://stackoverflow.com/questions/59611662/how-to-send-message-from-bot-to-user-at-a-fixed-time-or-at-intervals-through-pyt"
-"How to let the bot prompt the user every day, run function repeatedly. "
-"""
-Further stuff to do: 
-Every day at 2pm, update attendance
-Every day at 2pm, send the message for attendance of the next day. 
-Track the date (how?) """
-
-
-# Updates the attendance for the next day
-# What I want this function to do:
-# I want the attendance of the whole of next week to be recorded. So on 2pm of day 1,
-# I want the attendance of day 8 to be stored in the SQLite table.
-# All entries will be P
-# Ok don't do this. Only update the attendance of the next day
-# And in fact I think we don't need this function
-# Here's what I will do: When the bot sends the next day's attendance, it will parse the table to look for members
-# and whether their attendance has been updated. If the answer is yes, display as such. If no, then display as P,
-# and update the members' attendance as P in the attendance database.
-def update_attendance():
-
-    # First, we find all the groups that need attendance updated
-    with sqlite3.connect('attendance.db') as con:
-        cur = con.cursor()
-        cur.execute(
-            """
-            SELECT groups.id, groups.NumDailyReports, users.id
-              FROM groups
-              JOIN users
-                ON groups.id = users.group_id
-            """
-        )
-        user_groups = cur.fetchall()
-
-        # Next, for each group, we update all the necessary attendances
-        for group in user_groups:
-            group_id, frequency, user_id = group
-            for i in range(frequency):
-                cur.execute(
-                    """
-                    INSERT INTO attendance
-                    (group_id, user_id, TimePeriod, Date, AttendanceStatus)
-                    VALUES 
-                    (?, ?, ?, date('now', '+7 day'), P)""",
-                    (group_id, user_id, i + 1)  # 1-indexed
-                )
-
-
-# Trial function to test repeating
-def trial_function(context: CallbackContext):
-    chat_id = context.job.context
-    context.bot.send_message(chat_id=chat_id,
-                             text="Hi, this is a trial text")
-    # print("Function one is called")
-
-
-# Second trial function
-def trial_function_two(context: CallbackContext):
-    chat_id = context.job.context
-    context.bot.send_message(chat_id=chat_id,
-                             text="Hi, this is the second trial text")
-    # print("Function two is called")
-
-
-# Sends user help
-def user_help(update_obj: Update, context: CallbackContext) -> int:
-    update_obj.message.reply_text(settings.help_message)
-    return ConversationHandler.END

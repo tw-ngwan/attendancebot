@@ -2,7 +2,6 @@
 from collections import defaultdict
 current_group_id = defaultdict(lambda: None)
 current_group_name = defaultdict(lambda: None)
-temp_groups = {}  # For store_added_user in state_user_functions
 attendance_date_edit = {}  # For change_any_day_attendance_get_day in state_attendance_functions
 group_to_join = {}  # For join_group_get_group_code in state_group_functions
 merge_group_storage = {}  # For merge_group functions in entry_group_functions and state_group_functions
@@ -31,59 +30,73 @@ class ChangeUserGroups:
 def init():
     global current_group_id, current_group_name
     global FIRST, SECOND, THIRD
-    global help_message
+    global help_message, full_help_message
     global OBSERVER, MEMBER, ADMIN
-    global temp_groups
     global attendance_date_edit
     global group_to_join
     global merge_group_storage
     current_group_id = defaultdict(lambda: None)
     current_group_name = defaultdict(lambda: None)
     FIRST, SECOND, THIRD = range(3)
-    temp_groups = {}
     attendance_date_edit = {}
     merge_group_storage = {}
     OBSERVER, MEMBER, ADMIN = "Observer", "Member", "Admin"
+    # Basic help message
     help_message = """
-Here is a walkthrough of what each of the functions will do: 
+Here is a walkthrough of what each of the functions will do, and your level needed to perform the functions: 
+/start: Once you activate the bot, it will send you the attendance statuses of each group you're in every day. (None)
+/help: Gives you the list of commands available (None)
+/helpfull: Gives you the full list of commands available (None)
 
-Start functions: 
-/start: Once you activate the bot, it will send you the attendance statuses of each group you're in every day. 
-/help: Gives you the list of commands available and explains the concept of "groups" and "subgroups"
+/enter: Enters group to do stuff in the group (Observer)
+/current: Tells you the current group you are in, and None if not (Observer) 
+/joingroup: Joins a group that already exists, using its group id. (None) 
 
-Group functions: 
-/creategroup: Creates a group within your current group 
-/entergroup: Enters group to do stuff in the group
-/leavegroup: Leaves group you are currently in, goes one level up. 
-/currentgroup: Returns the current group you are in, and None if not 
-/deletegroup: Deletes the group. Needs Admin privileges, and prompt to do so
-/mergegroups: Merges two groups together, with one becoming the parent group, and the other its child
-/joingroupmembers: Joins the members of two groups together, under a new name
-/joinexistinggroup: Joins a group that already exists, using its group id. 
-/quitexistinggroup: Quits a group you are currently in. 
+/addusers: Adds users to the group you are currently in (/enter). Recursive, till enter OK (Member)
+/getusers: Gets the names of all users (Observer)
 
-User functions: 
-/addusers: Adds users to the group you are currently in (/entergroup). Recursive, till enter OK
-/removeusers: Removes users from the group you are currently in. Recursive, till enter OK 
-/editusers: Changes the names and details of the user 
-/getusers: Gets all users 
-/becomeadmin: Enter a password to become group admin 
-/getadmins: Returns a list of all admin users. 
-/dismissadmins: Dismisses an admin user. Can only be done with Head Admin Privileges. 
+/change: Changes the attendance status of any group members of group you are currently in, for current day (Member)
+/changetmr: Changes the attendance status of any group members of group you are currently in, for next day (Member)
+/get: Sends a message with the attendance status of all group members (and subgroup members) for current day (Observer)
+/gettmr: Sends a message with the attendance status of all group members (and subgroup members) for next day (Observer)
 
-Attendance functions: 
-/editsettings: Edits settings. To be elaborated
-/changeattendance: Changes the attendance status of any group members of group you are currently in (Admin?)
-/changemyattendance: Changes your attendance 
-/getgroupattendance: Returns the attendance status of all group members on that day 
-/getuserattendance: Returns the attendance status of a user over a period of time (user-defined)
-/getallattendance: Returns the attendance status of all group members over a period of time
-/backdatechangeattendance: Changes the attendance of a user, backdated. Admin Privileges required. 
-
-/stop: Stops the bot from running. 
-
-To cancel a function you have called, type 'OK'. 
-
-If this is your first time using the bot, call /creategroup to create a new group, or /joingroup to join an existing group. 
-If you want to perform a function within a group (eg: /addusers, /getgroupattendance), make sure to call /entergroup first. 
+To perform a function, call /enter first to enter a group. Your actions will be localized within the group. 
 """
+    # Full help message with all functions available
+    full_help_message = """
+Here is a walkthrough of what each of the functions will do, and your level needed to perform the functions: 
+/start: Once you activate the bot, it will send you the attendance statuses of each group you're in every day. (None)
+/help: Gives you the list of commands available (None)
+/helpfull: Gives you the full list of commands available (None)
+
+/creategroup: Creates a group within your current group. Don't accidentally make subgroups! (None, Admin) 
+/enter: Enters group to do stuff in the group (Observer)
+/leave: Leaves group you are currently in after you finish doing stuff (Observer) 
+/current: Tells you the current group you are in, and None if not (Observer) 
+/deletegroup: Deletes the group. Needs Admin privileges, and prompt to do so (Admin) 
+/mergegroups: Merges two groups together, with one becoming the parent group, and the other its child (Admin)  
+/joingroup: Joins a group that already exists, using its group id. (None) 
+/quitgroup: Quits and exits your group. Do NOT confuse with leave! (Observer) 
+/changetitle: Changes group title. Admin privileges required. (Admin) 
+/getgrouppasswords: Sends messages with the group code, and group passwords relative to your level (any)
+/uprank: Promotes user to Admin/Member, with the correct password (Observer/Member)
+
+/addusers: Adds users to the group you are currently in (/enter). Recursive, till enter OK (Member)
+/removeusers: Removes users from the group you are currently in. Recursive, till enter OK (Admin)
+/editusers: Changes the names and details of the user (Admin)
+/getusers: Gets the names of all users (Observer)
+/changeordering: Swaps the ranks of two users (Member) 
+/changeusergroup: Transfers users from one group to another (Admin) 
+
+/change: Changes the attendance status of any group members of group you are currently in, for current day (Member)
+/changetmr: Changes the attendance status of any group members of group you are currently in, for next day (Member)
+/changeany: Changes the attendance status of any group members on any day, including backdating (Admin) 
+/get: Sends a message with the attendance status of all group members (and subgroup members) for current day (Observer)
+/gettmr: Sends a message with the attendance status of all group members (and subgroup members) for next day (Observer)
+/getany: Sends a message with the attendance status of all group members (and subgroup members) for any day (Member)
+/getusermonth: Sends a message with the attendance status of a user over the past month (Member)
+/getuserany: Sends a message with the attendance status of a user over any period of time (Member)
+
+To perform a function, call /enter first to enter a group. Your actions will be localized within the group. 
+"""
+

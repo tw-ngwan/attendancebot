@@ -94,7 +94,7 @@ def verify_group_and_role(update_obj: Update, context: CallbackContext, role: st
     # Verify that the user is in a group first
     if current_group_id is None:
         # print("False verification")
-        update_obj.message.reply_text("Enter a group first with /entergroup!")
+        update_obj.message.reply_text("Enter a group first with /enter!")
         return False
 
     # Check that the user has the right privileges

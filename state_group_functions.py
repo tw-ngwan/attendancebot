@@ -184,7 +184,7 @@ def join_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
     return ConversationHandler.END
 
 
-# Quits the group you are currently in. Not to be confused with leavegroup!
+# Quits the group you are currently in. Not to be confused with leave!
 def quit_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
     chat_id, message = get_admin_reply(update_obj, context)
     current_group_id = settings.current_group_id[chat_id]
@@ -205,7 +205,7 @@ def quit_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
     settings.current_group_id[chat_id] = None
     settings.current_group_name[chat_id] = None
 
-    update_obj.message.reply_text("Ok, you have quit the group. Enter a group now with /entergroup or "
+    update_obj.message.reply_text("Ok, you have quit the group. Enter a group now with /enter or "
                                   "join a new group with /joingroup")
     return ConversationHandler.END
 

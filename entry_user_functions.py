@@ -52,7 +52,7 @@ def edit_users(update_obj: Update, context: CallbackContext) -> int:
 def get_users(update_obj: Update, context: CallbackContext) -> int:
     chat_id = update_obj.message.chat_id
     if settings.current_group_id[chat_id] is None:
-        update_obj.message.reply_text("Enter a group first with /entergroup!")
+        update_obj.message.reply_text("Enter a group first with /enter!")
         return ConversationHandler.END
     update_obj.message.reply_text("Ok, getting all users...")
     with sqlite3.connect('attendance.db') as con:

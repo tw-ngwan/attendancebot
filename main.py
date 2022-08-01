@@ -1,5 +1,5 @@
 """
-
+#TODO
 I FINISHED THE CODE!!!!!
 OK not really done, still have encryption.
 But here's what you need to do:
@@ -9,60 +9,28 @@ But here's what you need to do:
 4. After you deploy the code and users can use it, start encrypting all the data for users to use
 4. After you deploy the code and users can use it, start encrypting all the data for users to use
 
-Here's the functionality that you want the bot to have first
-First, SQLite for storage
+Bot Description:
+This attendance bot tracks attendance of groups, of which each group contains users. Each group can be the subgroup
+of other groups, and  the parent of other groups, so this implementation allows for the nesting necessary for there
+to be layers of groups on top of each other.
+Each group can be managed by users, of which there are three priority tiers: Observers, Members, and Admins, of which
+Admins get the full functionality of the bot, and Observers only basic functions. This is to ensure that the
+attendance of groups cannot be tampered with unnecessarily.
 
-Here's how the bot will work:
+People using the bot can either create a group, or join the necessary group that has already been created (using a group
+code and password). To call a function on a group, they must use /enter to enter the group first.
 
-To start tracking attendance, you first need to create a group.
-You can continue creating subgroups for each group (or each subgroup). Groups' relations are stored as trees (dj sets),
-with each group's parent group stored (if no parent, stored as 0).
-For each subgroup/group, you can add participants to the group.
-If you typoed and want to resend something, work on this.
-If you send a message that says end, then it stores everything.
+Technical implementation of the bot:
+Data is stored in SQLite in 4 tables: Groups, Users, Attendance, and Admins. Groups stores the groups that are created,
+Users stores all the names of all the people in each group, Attendance stores the daily attendance of each user, and
+Admins stores the chat_ids and data of all the people who use the bot (regardless of their tier).
+Whenever users call a function to change the attendance or get the attendance, the relevant attendance status is stored
+in the Attendance Table of SQLite, so that it can be called back when needed. Similarly, whenever groups / users are
+added or deleted, the relevant tables are called.
+When the attendance of a group is called, it will call recursively for the attendance of all subgroups as well.
+However, if you want to change the attendance of a subgroup of a group, you need to enter that group first.
 
-Need to generate the attendance, and store the attendance status of people.
-
-SQL admin:
-Need to create 4 tables
-Table 1: groups
-id, parent_id, Name, Date Added, No. Daily Reports, Group Code, Observer Password, Member Password, Admin Password
-Table 2: users
-id, group_id, Name, Date Added
-id, group_id, Name, Date Added, chat_id (if relevant), role -> (Observer, Member, or Admin)
-Table 3: attendance
-id, time period (morning, afternoon), datetime, user_id, group_id, status
-Table 4: admins
-id, group_id, user_id, Date Added, chat_id, role -> (Observer, Member, or Admin)
-
-Do I need one more table to track users? Or no?
-Maybe a chat_id table that links chat_id to user_ids?
-Or maybe some table that just contains user's names and id
-
-Question: How do you join a group that already exists?
-Using group_id
-
-Delete state_variables.py
-
-These are the following roles of people in each group:
-Head Admin: Typically creator. Can pass role to someone else. (Is this needed?)
-Admin: Has admin privileges.
-Member: Name is inside the name list. Has some privileges.
-Observer: Apart from viewing attendance, has no privileges
-*Even more below?
-
-Process detach issue: Make sure only one copy of script is running at a time
-
-
-Clarification:
-Admins are actual people
-Users are just names
-When you want a function that gets the groups that a person is in or whatever he said, call the admins table
-
-Ok I am worried about one thing. I have a lot of functions using get_admin_reply, using new Keyboards. But what if
-the user can choose not to use the keyboard, and then come up with something that screws up the program?
-Then I will have Exceptions, and the whole bot will go down. I need to test this possibility, and if it is really a
-worry, then I need to go through every file to look for the uses of this.
+There are functions for editing, merging groups, and transferring users between groups if those are needed.
 """
 
 
@@ -76,7 +44,7 @@ from entry_attendance_functions import get_today_group_attendance, get_tomorrow_
     get_user_attendance_month, get_user_attendance_arbitrary
 from entry_group_functions import create_group, enter_group, leave_group, current_group, delete_group, merge_groups, \
     join_existing_group, quit_group, change_group_title, uprank, get_group_passwords
-from entry_help_functions import start, user_help
+from entry_help_functions import start, user_help, user_help_full
 from entry_user_functions import add_users, get_users, remove_users, edit_users, change_group_ordering, \
     change_user_group
 from state_attendance_functions import change_today_attendance_follow_up, change_tomorrow_attendance_follow_up, \
@@ -90,11 +58,7 @@ from state_user_functions import add_user_follow_up, remove_user_verification, r
     edit_user_follow_up, change_group_ordering_follow_up, change_user_group_get_initial, change_user_group_get_final, \
     change_user_group_follow_up
 
-"""What I will consider doing: 
-1. Add a group_title to settings.py 
-2. Change group_id to the group code """
-
-
+# Getting the API_KEY
 API_KEY = os.getenv("ATTENDANCE_TELEGRAM_API")
 
 # Letting Telegram know which bot to run code on
@@ -107,57 +71,38 @@ print("Bot starting...")
 # Initialize all global variables
 settings.init()
 
-commands = ['start', 'help',
-            'creategroup', 'entergroup', 'leavegroup', 'currentgroup', 'deletegroup', 'mergegroups',
-            'joingroupmembers', 'joinexistinggroup', 'quitexistinggroup', 'changegrouptitle'
-            'addusers', 'removeusers', 'editusers', 'becomeadmin', 'getadmins', 'dismissadmins'
-            'editsettings', 'changeattendance', 'changemyattendance', 'getgroupattendance', 'getuserattendance',
-            'getallattendance', 'backdatechangeattendance'
-            'stop']
+commands = """
+/start: Once you activate the bot, it will send you the attendance statuses of each group you're in every day. (None)
+/help: Gives you the list of commands available (None)
+/helpfull: Gives you the full list of commands available (None)
 
-implemented_commands = ['currentgroup']
-
-fully_implemented_commands = ['start', 'help',
-                              'creategroup', 'entergroup', ]
-
-help_message = """
-Here is a walkthrough of what each of the functions will do: 
-/start: Once you activate the bot, it will send you the attendance statuses of each group you're in every day. 
-/help: Gives you the list of commands available and explains the concept of "groups" and "subgroups"
-
-/creategroup: Creates a group within your current group (None, Admin) 
-/entergroup: Enters group to do stuff in the group (Observer)
-/leavegroup: Leaves group you are currently in after you finish doing stuff (Observer) 
-/currentgroup: Returns the current group you are in, and None if not (Observer) 
+/creategroup: Creates a group within your current group. Don't accidentally make subgroups! (None, Admin) 
+/enter: Enters group to do stuff in the group (Observer)
+/leave: Leaves group you are currently in after you finish doing stuff (Observer) 
+/current: Tells you the current group you are in, and None if not (Observer) 
 /deletegroup: Deletes the group. Needs Admin privileges, and prompt to do so (Admin) 
-/mergegroups: Merges two groups together, with one becoming the parent group, and the other its child (Admin) O X 
+/mergegroups: Merges two groups together, with one becoming the parent group, and the other its child (Admin)  
 /joingroup: Joins a group that already exists, using its group id. (None) 
-/quitgroup: Quits and exits your group. Do NOT confuse with leavegroup! (Observer) 
-/changegrouptitle: Changes group title. Admin privileges required. (Admin) 
-/getgrouppasswords: Returns the passwords that you need (can tag to the level that you are at) 
-/uprank: Increases the rank of the user O X  #Can't use verify to verify, because you will send extra messages
+/quitgroup: Quits and exits your group. Do NOT confuse with leave! (Observer) 
+/changetitle: Changes group title. Admin privileges required. (Admin) 
+/getgrouppasswords: Sends messages with the group code, and group passwords relative to your level (any)
+/uprank: Promotes user to Admin/Member, with the correct password (Observer/Member)
 
-/addusers: Adds users to the group you are currently in (/entergroup). Recursive, till enter OK (Member)
+/addusers: Adds users to the group you are currently in (/enter). Recursive, till enter OK (Member)
 /removeusers: Removes users from the group you are currently in. Recursive, till enter OK (Admin)
 /editusers: Changes the names and details of the user (Admin)
 /getusers: Gets the names of all users (Observer)
-/changegroupordering: Swaps the ranks of two users (Member) 
+/changeordering: Swaps the ranks of two users (Member) 
 /changeusergroup: Transfers users from one group to another (Admin) 
 
-/changeattendancetoday: Changes the attendance status of any group members of group you are currently in (Member)
-/changeattendancetomorrow: 
-/changeattendanceanyday: Changes the attendance status of any group members on any day. Can backdate also (Admin) 
-/getattendancetoday: Returns the attendance status of all group members on that day (Observer)
-/getattendancetomorrow: (Observer)
-/getattendanceanyday: (Observer/Member)
-/getuserattendancemonth: Returns the attendance status of a user over a period of time (user-defined) (Member)
-/getuserattendancearbitrary: (Member)
-
-/stop: Stops the bot from running. O (Is this needed?) 
-
-However, need to change get attendance functions to make them recursive. Need to change change_attendance functions 
-to make them send something first. 
-
+/change: Changes the attendance status of any group members of group you are currently in, for current day (Member)
+/changetmr: Changes the attendance status of any group members of group you are currently in, for next day (Member)
+/changeany: Changes the attendance status of any group members on any day, including backdating (Admin) 
+/get: Sends a message with the attendance status of all group members (and subgroup members) for current day (Observer)
+/gettmr: Sends a message with the attendance status of all group members (and subgroup members) for next day (Observer)
+/getany: Sends a message with the attendance status of all group members (and subgroup members) for any day (Member)
+/getusermonth: Sends a message with the attendance status of a user over the past month (Member)
+/getuserany: Sends a message with the attendance status of a user over any period of time (Member)
 """
 
 "Schedule message: https://stackoverflow.com/questions/48288124/how-to-send-message-in-specific-time-telegrambot"
@@ -175,6 +120,8 @@ def main():
         entry_points=[CommandHandler('start', start, pass_job_queue=True)], states={}, fallbacks=[]
     )
     help_handler = ConversationHandler(entry_points=[CommandHandler('help', user_help)], states={}, fallbacks=[])
+    help_full_handler = ConversationHandler(entry_points=[CommandHandler('helpfull', user_help_full)],
+                                            states={}, fallbacks=[])
 
     # Group functions
     create_group_handler = ConversationHandler(
@@ -185,15 +132,15 @@ def main():
         fallbacks=[]
     )
     enter_group_handler = ConversationHandler(
-        entry_points=[CommandHandler('entergroup', enter_group)],
+        entry_points=[CommandHandler('enter', enter_group)],
         states={
             settings.FIRST: [MessageHandler(Filters.text, enter_group_follow_up)],
         },
         fallbacks=[]
     )
-    leave_group_handler = ConversationHandler(entry_points=[CommandHandler('leavegroup', leave_group)],
+    leave_group_handler = ConversationHandler(entry_points=[CommandHandler('leave', leave_group)],
                                               states={}, fallbacks=[])
-    current_group_handler = ConversationHandler(entry_points=[CommandHandler('currentgroup', current_group)],
+    current_group_handler = ConversationHandler(entry_points=[CommandHandler('current', current_group)],
                                                 states={}, fallbacks=[])
     delete_group_handler = ConversationHandler(
         entry_points=[CommandHandler('deletegroup', delete_group)],
@@ -227,7 +174,7 @@ def main():
         fallbacks=[]
     )
     change_group_title_handler = ConversationHandler(
-        entry_points=[CommandHandler('changegrouptitle', change_group_title)],
+        entry_points=[CommandHandler('changetitle', change_group_title)],
         states={
             settings.FIRST: [MessageHandler(Filters.text, change_group_title_follow_up)]
         },
@@ -273,7 +220,7 @@ def main():
         fallbacks=[]
     )
     change_group_ordering_handler = ConversationHandler(
-        entry_points=[CommandHandler('changegroupordering', change_group_ordering)],
+        entry_points=[CommandHandler('changeordering', change_group_ordering)],
         states={
             settings.FIRST: [MessageHandler(Filters.text, change_group_ordering_follow_up)]
         },
@@ -291,48 +238,48 @@ def main():
 
     # Attendance functions
     get_today_attendance_handler = ConversationHandler(
-        entry_points=[CommandHandler('getattendancetoday', get_today_group_attendance)], states={}, fallbacks=[]
+        entry_points=[CommandHandler('get', get_today_group_attendance)], states={}, fallbacks=[]
     )
     get_tomorrow_attendance_handler = ConversationHandler(
-        entry_points=[CommandHandler('getattendancetomorrow', get_tomorrow_group_attendance)], states={}, fallbacks=[]
+        entry_points=[CommandHandler('gettmr', get_tomorrow_group_attendance)], states={}, fallbacks=[]
     )
     get_any_day_attendance_handler = ConversationHandler(
-        entry_points=[CommandHandler('getattendanceanyday', get_any_day_group_attendance)],
+        entry_points=[CommandHandler('getany', get_any_day_group_attendance)],
         states={
             settings.FIRST: [MessageHandler(Filters.text, get_specific_day_group_attendance_follow_up)]
         },
         fallbacks=[]
     )
     get_user_attendance_month_handler = ConversationHandler(
-        entry_points=[CommandHandler('getuserattendancemonth', get_user_attendance_month)],
+        entry_points=[CommandHandler('getusermonth', get_user_attendance_month)],
         states={
             settings.FIRST: [MessageHandler(Filters.text, get_user_attendance_month_follow_up)]
         },
         fallbacks=[]
     )
     get_user_attendance_arbitrary_handler = ConversationHandler(
-        entry_points=[CommandHandler('getuserattendancearbitrary', get_user_attendance_arbitrary)],
+        entry_points=[CommandHandler('getuserany', get_user_attendance_arbitrary)],
         states={
             settings.FIRST: [MessageHandler(Filters.text, get_user_attendance_arbitrary_follow_up)]
         },
         fallbacks=[]
     )
     change_today_attendance_handler = ConversationHandler(
-        entry_points=[CommandHandler('changeattendancetoday', change_attendance)],
+        entry_points=[CommandHandler('change', change_attendance)],
         states={
             settings.FIRST: [MessageHandler(Filters.text, change_today_attendance_follow_up)]
         },
         fallbacks=[]
     )
     change_tomorrow_attendance_handler = ConversationHandler(
-        entry_points=[CommandHandler('changeattendancetomorrow', change_attendance)],
+        entry_points=[CommandHandler('changetmr', change_attendance)],
         states={
             settings.FIRST: [MessageHandler(Filters.text, change_tomorrow_attendance_follow_up)]
         },
         fallbacks=[]
     )
     change_any_day_attendance_handler = ConversationHandler(
-        entry_points=[CommandHandler('changeattendanceanyday', change_any_day_attendance)],
+        entry_points=[CommandHandler('changeany', change_any_day_attendance)],
         states={
             settings.FIRST: [MessageHandler(Filters.text, change_any_day_attendance_get_day)],
             settings.SECOND: [MessageHandler(Filters.text, change_any_day_attendance_follow_up)]
@@ -341,7 +288,7 @@ def main():
     )
 
     global dispatcher
-    all_handlers = [start_handler, help_handler,
+    all_handlers = [start_handler, help_handler, help_full_handler,
                     create_group_handler, enter_group_handler, leave_group_handler, current_group_handler,
                     delete_group_handler, merge_groups_handler, join_groups_handler, quit_group_handler,
                     change_group_title_handler, get_group_passwords_handler, uprank_handler,
