@@ -146,7 +146,7 @@ def change_group_ordering_follow_up(update_obj: Update, context: CallbackContext
     print(pairs_to_swap)
     # Verify that user input is correct
     if not pairs_to_swap:
-        update_obj.message.reply_text("Pairs keyed in in an incorrect format!")
+        update_obj.message.reply_text("Pairs keyed in an incorrect format!")
         return ConversationHandler.END
 
     # Swaps all pairs of users in sequence

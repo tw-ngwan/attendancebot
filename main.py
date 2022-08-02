@@ -72,37 +72,37 @@ print("Bot starting...")
 settings.init()
 
 commands = """
-/start: Once you activate the bot, it will send you the attendance statuses of each group you're in every day. (None)
-/help: Gives you the list of commands available (None)
-/helpfull: Gives you the full list of commands available (None)
+/start: Once you activate the bot, it will send you the attendance statuses of each group you're in every day. (None)/
+/help: Gives you the list of commands available (None)/
+/helpfull: Gives you the full list of commands available (None)/
 
-/creategroup: Creates a group within your current group. Don't accidentally make subgroups! (None, Admin) 
-/enter: Enters group to do stuff in the group (Observer)
-/leave: Leaves group you are currently in after you finish doing stuff (Observer) 
-/current: Tells you the current group you are in, and None if not (Observer) 
-/deletegroup: Deletes the group. Needs Admin privileges, and prompt to do so (Admin) 
-/mergegroups: Merges two groups together, with one becoming the parent group, and the other its child (Admin)  
-/joingroup: Joins a group that already exists, using its group id. (None) 
-/quitgroup: Quits and exits your group. Do NOT confuse with leave! (Observer) 
-/changetitle: Changes group title. Admin privileges required. (Admin) 
-/getgrouppasswords: Sends messages with the group code, and group passwords relative to your level (any)
-/uprank: Promotes user to Admin/Member, with the correct password (Observer/Member)
+/creategroup: Creates a group within your current group. Don't accidentally make subgroups! (None, Admin) /
+/enter: Enters group to do stuff in the group (Observer)/
+/leave: Leaves group you are currently in after you finish doing stuff (Observer) /
+/current: Tells you the current group you are in, and None if not (Observer) /
+/deletegroup: Deletes the group. Needs Admin privileges, and prompt to do so (Admin) /
+/mergegroups: Merges two groups together, with one becoming the parent group, and the other its child (Admin) /
+/joingroup: Joins a group that already exists, using its group id. (None) /
+/quitgroup: Quits and exits your group. Do NOT confuse with leave! (Observer) /
+/changetitle: Changes group title. Admin privileges required. (Admin) /
+/getgroupcodes: Sends messages with the group code, and group passwords relative to your level (any)/
+/uprank: Promotes user to Admin/Member, with the correct password (Observer/Member) /
 
-/addusers: Adds users to the group you are currently in (/enter). Recursive, till enter OK (Member)
-/removeusers: Removes users from the group you are currently in. Recursive, till enter OK (Admin)
-/editusers: Changes the names and details of the user (Admin)
-/getusers: Gets the names of all users (Observer)
-/changeordering: Swaps the ranks of two users (Member) 
-/changeusergroup: Transfers users from one group to another (Admin) 
+/addusers: Adds users to the group you are currently in (/enter). Recursive, till enter OK (Member)/
+/removeusers: Removes users from the group you are currently in. Recursive, till enter OK (Admin)/
+/editusers: Changes the names and details of the user (Admin)/
+/getusers: Gets the names of all users (Observer)/
+/changeordering: Swaps the ranks of two users (Member) /
+/changeusergroup: Transfers users from one group to another (Admin) /
 
-/change: Changes the attendance status of any group members of group you are currently in, for current day (Member)
-/changetmr: Changes the attendance status of any group members of group you are currently in, for next day (Member)
-/changeany: Changes the attendance status of any group members on any day, including backdating (Admin) 
-/get: Sends a message with the attendance status of all group members (and subgroup members) for current day (Observer)
-/gettmr: Sends a message with the attendance status of all group members (and subgroup members) for next day (Observer)
-/getany: Sends a message with the attendance status of all group members (and subgroup members) for any day (Member)
-/getusermonth: Sends a message with the attendance status of a user over the past month (Member)
-/getuserany: Sends a message with the attendance status of a user over any period of time (Member)
+/change: Changes the attendance status of any group members of group you are currently in, for current day (Member)/
+/changetmr: Changes the attendance status of any group members of group you are currently in, for next day (Member)/
+/changeany: Changes the attendance status of any group members on any day, including backdating (Admin) /
+/get: Sends a message with the attendance status of all group members (and subgroup members) for current day (Observer)/
+/gettmr: Sends a message with the attendance status of all group members (and subgroup members) for next day (Observer)/
+/getany: Sends a message with the attendance status of all group members (and subgroup members) for any day (Member)/
+/getusermonth: Sends a message with the attendance status of a user over the past month (Member)/
+/getuserany: Sends a message with the attendance status of a user over any period of time (Member) /
 """
 
 "Schedule message: https://stackoverflow.com/questions/48288124/how-to-send-message-in-specific-time-telegrambot"
@@ -181,7 +181,7 @@ def main():
         fallbacks=[]
     )
     get_group_passwords_handler = ConversationHandler(
-        entry_points=[CommandHandler('getgrouppasswords', get_group_passwords)],
+        entry_points=[CommandHandler('getgroupcodes', get_group_passwords)],
         states={},
         fallbacks=[]
     )

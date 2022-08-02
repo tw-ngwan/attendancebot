@@ -191,9 +191,13 @@ def check_valid_datetime(date_to_check: str, date_compared: datetime.date = None
 
 
 # Gets group's attendance on a certain day
-def get_day_group_attendance(context: CallbackContext, day: datetime.date, current_group_id: int) -> None:
+def get_day_group_attendance(context: CallbackContext, day: datetime.date, current_group_id: int,
+                             update_obj: Update=None) -> None:
     # Verifies that the user is qualified to call this first
-    chat_id = context.job.context
+    if update_obj is None:
+        chat_id = context.job.context
+    else:
+        chat_id = update_obj.message.chat_id
 
     # Verification done in the main function so no use for update_obj
 
@@ -460,6 +464,11 @@ def change_group_attendance_backend(update_obj: Update, context: CallbackContext
         if 'till' in entry[1]:
             status, final_date = entry[1].split('till')
             status = status.strip()
+            # Check that status is not blank
+            if not status:
+                update_obj.message.reply_text(f"Regarding user {entry[0]}: Enter a status!")
+                continue
+
             final_date = final_date.strip()
 
             final_date = check_valid_datetime(date_to_check=final_date, date_compared=day, after_date=True)
@@ -477,16 +486,24 @@ def change_group_attendance_backend(update_obj: Update, context: CallbackContext
 
         # Else, if the attendance is listed without '/'
         elif '/' not in entry[1]:
+            entry[1] = entry[1].strip()
+            if not entry[1]:
+                update_obj.message.reply_text(f"Regarding user {entry[0]}: Enter a status!")
+                continue
             status = ' / '.join([entry[1], entry[1]])
         else:
-            status = entry[1]
+            status = entry[1].strip()
+            # Check that each status has something said
+            if not min([len(value.strip()) for value in status.split('/')]):
+                update_obj.message.reply_text(f"Regarding user {entry[0]}: Enter a status!")
+                continue
 
         # This updates the user's attendance for all
         # Update the attendance of the user
         with sqlite3.connect('attendance.db') as con:
             cur = con.cursor()
             # Gets the values of all
-            status = [value.strip() for value in status.split('/')]
+            status = [value.strip().upper() for value in status.split('/')]
 
             # You need to update the date to make it correct. It can be either today or tomorrow.
             # For now, implementation is today. What this does is create one entry for each day, for each
@@ -703,6 +720,7 @@ def get_group_id_from_button(message):
 def get_intended_user_swap_pairs(message, group_id=None):
     message = message.strip()
     pairs = message.split('\n')
+    pairs = [pair for pair in pairs if len(pair) != 0]
 
     # Couple of tests to check that the entry is correct
     # First, we check that each entry is an integer in the list

@@ -21,10 +21,9 @@ def start(update_obj: Update, context: CallbackContext) -> ConversationHandler.E
                                   "concurrently. \n"
                                   "Every day, this bot will update you with the attendance of all groups you are "
                                   "a part of. You can edit your attendance with /changemyattendance \n"
-                                  "If this is your first time using the bot, please key in /tutorial "
-                                  "for a tutorial on how to use the bot! Else, if you are just looking for a "
-                                  "refresher, please type /help for all the commands you need. \n"
-                                  "Create your first group now with /creategroup!"
+                                  "Please key in /help for a list of useful functions, or if you want to get a full "
+                                  "list of functions, type /helpfull. Else, create your first group now with "
+                                  "/creategroup, or join a group with /joingroup! "
                                   )
 
     # Sets the timezone

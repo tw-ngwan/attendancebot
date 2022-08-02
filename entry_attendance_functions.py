@@ -28,7 +28,7 @@ def get_today_group_attendance(update_obj: Update, context: CallbackContext) -> 
     if not verify_group_and_role(update_obj, context, settings.OBSERVER):
         return ConversationHandler.END
 
-    get_day_group_attendance(context, today, current_group)
+    get_day_group_attendance(context, today, current_group, update_obj=update_obj)
     return ConversationHandler.END
 
 
@@ -45,7 +45,7 @@ def get_tomorrow_group_attendance(update_obj: Update, context: CallbackContext) 
     if not verify_group_and_role(update_obj, context, settings.OBSERVER):
         return ConversationHandler.END
 
-    get_day_group_attendance(context, tomorrow, current_group)
+    get_day_group_attendance(context, tomorrow, current_group, update_obj=update_obj)
     return ConversationHandler.END
 
 

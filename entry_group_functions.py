@@ -161,6 +161,11 @@ def uprank(update_obj: Update, context: CallbackContext) -> int:
     chat_id = update_obj.message.chat_id
     group_id = settings.current_group_id[chat_id]
 
+    # Check that group_id is not None
+    if group_id is None:
+        update_obj.message.reply_text("Enter a group first with /enter!")
+        return ConversationHandler.END
+
     # Unlike in the past where we verify that user is qualified, here we check if overqualified (hence no not)
     if check_admin_privileges(chat_id, group_id) == 0:
         update_obj.message.reply_text("You are already an admin!")

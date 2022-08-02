@@ -52,7 +52,7 @@ Here is a walkthrough of what each of the functions will do, and your level need
 /current: Tells you the current group you are in, and None if not (Observer) 
 /joingroup: Joins a group that already exists, using its group id. (None) 
 
-/addusers: Adds users to the group you are currently in (/enter). Recursive, till enter OK (Member)
+/addusers: Adds users to the group you are currently in. Recursive, till enter OK (Member)
 /getusers: Gets the names of all users (Observer)
 
 /change: Changes the attendance status of any group members of group you are currently in, for current day (Member)
@@ -78,10 +78,10 @@ Here is a walkthrough of what each of the functions will do, and your level need
 /joingroup: Joins a group that already exists, using its group id. (None) 
 /quitgroup: Quits and exits your group. Do NOT confuse with leave! (Observer) 
 /changetitle: Changes group title. Admin privileges required. (Admin) 
-/getgrouppasswords: Sends messages with the group code, and group passwords relative to your level (any)
+/getgroupcodes: Sends messages with the group code, and group passwords relative to your level (any)
 /uprank: Promotes user to Admin/Member, with the correct password (Observer/Member)
 
-/addusers: Adds users to the group you are currently in (/enter). Recursive, till enter OK (Member)
+/addusers: Adds users to the group you are currently in. Recursive, till enter OK (Member)
 /removeusers: Removes users from the group you are currently in. Recursive, till enter OK (Admin)
 /editusers: Changes the names and details of the user (Admin)
 /getusers: Gets the names of all users (Observer)

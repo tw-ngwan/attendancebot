@@ -87,7 +87,7 @@ def get_specific_day_group_attendance_follow_up(update_obj: Update, context: Cal
         update_obj.message.reply_text("Date is a weekend!")
         return ConversationHandler.END
 
-    get_day_group_attendance(context, day_to_check, current_group)
+    get_day_group_attendance(context, day_to_check, current_group, update_obj=update_obj)
     return ConversationHandler.END
 
 
@@ -107,8 +107,9 @@ def get_user_attendance_month_follow_up(update_obj: Update, context: CallbackCon
 # Gets the attendance of users over an arbitrary period of time
 def get_user_attendance_arbitrary_follow_up(update_obj: Update, context: CallbackContext) -> int:
     chat_id, admin_instructions = get_admin_reply(update_obj, context)
+    admin_instructions = [instruction for instruction in admin_instructions.split('\n') if instruction]
     try:
-        user_text, start_date, end_date = admin_instructions.split('\n')
+        user_text, start_date, end_date = admin_instructions
     except ValueError:
         update_obj.message.reply_text("Users entered in an incorrect format! Refer to above to see how to "
                                       "enter users and dates!")
@@ -116,7 +117,7 @@ def get_user_attendance_arbitrary_follow_up(update_obj: Update, context: Callbac
 
     # Gets the dates that the admin wants, and verifies that they are valid first.
     today = datetime.date.today()
-    end_date = check_valid_datetime(date_to_check=end_date, date_compared=today, after_date=True)
+    end_date = check_valid_datetime(date_to_check=end_date, date_compared=today, after_date=False)  # Check this condition
     if not end_date:
         update_obj.message.reply_text("End date entered incorrectly! Refer to above to see how to enter dates! "
                                       "The end date must be today or before. ")

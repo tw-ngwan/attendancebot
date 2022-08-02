@@ -32,7 +32,7 @@ def create_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
             """
             INSERT INTO groups (
             parent_id, Name, DateAdded, NumDailyReports, GroupCode, 
-            ObserverPassword, MemberPassword, AdminPassword, group_size
+            ObserverPassword, MemberPassword, AdminPassword
             )
             VALUES (?, ?, datetime('now'), 2, ?, ?, ?, ?)
             """,
@@ -66,7 +66,7 @@ def create_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
                                   f"observer password, member password, and admin password respectively. "
                                   f"Keep the passwords safe, as they will allow any user to join and gain access to "
                                   f"sensitive info in your group!\n"
-                                  f"To add a new member to your group, get them to use /joinexistinggroup and type "
+                                  f"To add a new member to your group, get them to use /joingroup and type "
                                   f"the group code.")
     update_obj.message.reply_text(observer_password)
     update_obj.message.reply_text(member_password)
@@ -86,7 +86,7 @@ def enter_group_follow_up(update_obj: Update, context: CallbackContext) -> Conve
     group_id, group_name = get_group_id_from_button(title)
 
     if not group_id:
-        update_obj.message.reply_text("Something went wrong, please try again!")
+        update_obj.message.reply_text("Invalid group, please try again!")
         return ConversationHandler.END
 
     settings.current_group_id[chat_id] = group_id
@@ -123,6 +123,8 @@ def delete_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
     # Leave the group
     settings.current_group_id[chat_id] = None
     settings.current_group_name[chat_id] = None
+
+    update_obj.message.reply_text("Group deleted")
 
     return ConversationHandler.END
 
@@ -274,6 +276,10 @@ def merge_groups_check_super_group(update_obj: Update, context: CallbackContext)
         return ConversationHandler.END
     # Stores the group that the user wants as the parent. First we get the group id
     parent_id, parent_name = get_group_id_from_button(parent_group)
+    # Verify that you are admin of the parent group
+    if check_admin_privileges(chat_id, parent_id) > 0:
+        update_obj.message.reply_text("You need to be an admin of the parent group to merge!")
+        return ConversationHandler.END
     settings.merge_group_storage[chat_id] = settings.MergeGroupStorage(parent_id)
     update_obj.message.reply_text("Do you want to join all users into a super group? That is, all users become united "
                                   "into one group, rather than remain in their own groups under this new parent group.",
@@ -330,7 +336,7 @@ def merge_groups_follow_up(update_obj: Update, context: CallbackContext) -> int:
                 )
             else:
                 # If we want to join all users, we need to update the group_id of all users, admins, attendance
-                argument_tuple = tuple([parent_id] + [ids[1] for ids in all_groups])
+                argument_tuple = tuple([parent_id] + all_groups)
                 # For users, transfer over to new group
                 cur.execute(
                     f"""
