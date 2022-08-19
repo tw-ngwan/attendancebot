@@ -1,7 +1,8 @@
 from telegram import Update
 from telegram.ext import CallbackContext, ConversationHandler
 from backend_implementations import get_admin_reply, get_intended_users, convert_rank_to_id, \
-    get_intended_user_swap_pairs, swap_users, get_group_id_from_button, get_group_size
+    get_intended_user_swap_pairs, swap_users, get_group_id_from_button, get_group_size, check_admin_privileges, \
+    reply_non_admin
 from keyboards import group_name_keyboards
 import settings
 import sqlite3
@@ -167,6 +168,12 @@ def change_user_group_get_initial(update_obj: Update, context: CallbackContext) 
         update_obj.message.reply_text("Ok, cancelling job now")
         return ConversationHandler.END
 
+    # Check that the user has the right privileges
+    if check_admin_privileges(chat_id, group_id) > 0:
+        # print("False verification")
+        reply_non_admin(update_obj, context, settings.ADMIN)
+        return False
+
     # Stores the initial group id
     settings.change_user_group_storage[chat_id] = settings.ChangeUserGroups(group_id)
 
@@ -186,6 +193,12 @@ def change_user_group_get_final(update_obj: Update, context: CallbackContext) ->
     if not group_id:
         update_obj.message.reply_text("Ok, cancelling job now")
         return ConversationHandler.END
+
+    # Check that the user has the right privileges
+    if check_admin_privileges(chat_id, group_id) > 0:
+        # print("False verification")
+        reply_non_admin(update_obj, context, settings.ADMIN)
+        return False
 
     # Stores the final group id, and checks that it is not the same as the initial group
     if group_id == settings.change_user_group_storage[chat_id].initial_group:
@@ -237,6 +250,7 @@ def change_user_group_follow_up(update_obj: Update, context: CallbackContext) ->
 
         # The list that is passed to the executemany to update the groups of the users
         user_parameters = [(final_group, i + final_group_size + 1, user_ids[i]) for i in range(len(user_ids))]
+        print(user_parameters)
 
         # Updates the users table to change the groups of the users
         cur.executemany(

@@ -44,7 +44,7 @@ FOREIGN KEY(user_id) REFERENCES users(id),
 CONSTRAINT unq UNIQUE(group_id, user_id, TimePeriod, Date)
 ); 
 
-CREATE TABLE admins_dup (
+CREATE TABLE admins (
 id       INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL, 
 group_id INTEGER NOT NULL, 
 DateAdded   TEXT NOT NULL, 

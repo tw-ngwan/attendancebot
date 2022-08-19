@@ -9,7 +9,7 @@ from telegram.ext import ConversationHandler
 import settings
 from keyboards import yes_no_button_markup, group_name_keyboards
 from backend_implementations import generate_random_password, generate_random_group_code, \
-    get_admin_reply, rank_determination, get_group_id_from_button, check_admin_privileges
+    get_admin_reply, rank_determination, get_group_id_from_button, check_admin_privileges, get_group_size
 import sqlite3
 
 
@@ -336,12 +336,17 @@ def merge_groups_follow_up(update_obj: Update, context: CallbackContext) -> int:
                 )
             else:
                 # If we want to join all users, we need to update the group_id of all users, admins, attendance
-                argument_tuple = tuple([parent_id] + all_groups)
+                # This is the list of all groups to
+                argument_tuple = tuple([parent_id, parent_id] + all_groups)
+                parent_group_size = get_group_size(parent_id)
+
                 # For users, transfer over to new group
+                # cur.executemany()
                 cur.execute(
                     f"""
                     UPDATE users
-                    SET group_id = ?
+                    SET group_id = ?, 
+                    rank = (SELECT MAX(rank) FROM users WHERE group_id = ?) + 1,
                     WHERE group_id IN ({','.join(['?'] * len(all_groups))})
                     """, argument_tuple
                 )

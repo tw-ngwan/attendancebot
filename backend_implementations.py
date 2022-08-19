@@ -450,7 +450,12 @@ def change_group_attendance_backend(update_obj: Update, context: CallbackContext
     for entry in parsed_attendance_message:
 
         # First, we check if the user exists
-        user_id = convert_rank_to_id(group_id=current_group, user_rank=int(entry[0]))
+        try:
+            user_rank = int(entry[0])
+        except ValueError:
+            update_obj.message.reply_text("Invalid user id")
+            continue
+        user_id = convert_rank_to_id(group_id=current_group, user_rank=user_rank)
         if not user_id:
             update_obj.message.reply_text(f"Regarding user {entry[0]}: User does not exist. ")
             continue
