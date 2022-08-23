@@ -555,7 +555,7 @@ def parse_user_change_instructions(message: str):
 
 # Gets user's attendance over the past month
 # If don't have, will assume that get attendance of the past month
-def get_single_user_attendance_backend(group_id, user_id, start_date: datetime.date, end_date: datetime.date):
+def get_single_user_attendance_backend(group_id: int, user_id: int, start_date: datetime.date, end_date: datetime.date):
 
     with sqlite3.connect('attendance.db') as con:
         cur = con.cursor()
@@ -586,6 +586,17 @@ def get_single_user_attendance_backend(group_id, user_id, start_date: datetime.d
 
         num_daily_reports = cur.fetchall()[0][0]
 
+        cur.execute(
+            """
+            SELECT Name 
+              FROM users
+             WHERE id = ?
+            """,
+            (user_id, )
+        )
+
+        user_name = cur.fetchall()[0][0]
+
         # # Number of days of attendance gotten
         # num_days = (end_date - start_date).days
 
@@ -600,7 +611,7 @@ def get_single_user_attendance_backend(group_id, user_id, start_date: datetime.d
                 user_attendance_summary[status[2]] += 1
 
         # Summary message provided
-        attendance_message_body = ["Summary:", f"Present: {user_attendance_summary['P']}", ""]
+        attendance_message_body = [f"Summary for {user_name}:", f"Present: {user_attendance_summary['P']}", ""]
         attendance_message_body += [f"{att_status}: {user_attendance_summary[att_status]}"
                                     for att_status in user_attendance_summary if att_status != 'P']
         attendance_message_body.append("")
@@ -758,10 +769,10 @@ def swap_users(a, b, group_id):
             cur.execute(
                 """
                 UPDATE users
-                SET rank = (CASE WHEN rank = ? THEN ? ELSE rank - 1 END)
+                SET rank = (CASE WHEN rank = ? THEN ? WHEN rank < ? THEN rank ELSE rank - 1 END)
                 WHERE group_id = ?
                 AND rank >= ?""",
-                (var, group_size, group_id, var)
+                (var, group_size, var, group_id, var)
             )
 
             con.commit()
@@ -776,10 +787,10 @@ def swap_users(a, b, group_id):
             cur.execute(
                 """
                 UPDATE users
-                SET rank = (CASE WHEN rank = ? THEN 1 ELSE rank + 1 END)
+                SET rank = (CASE WHEN rank = ? THEN 1 WHEN rank > ? THEN rank ELSE rank + 1 END)
                 WHERE group_id = ?
                 AND rank <= ?""",
-                (var, group_id, var)
+                (var, var, group_id, var)
             )
 
             con.commit()

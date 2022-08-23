@@ -96,6 +96,8 @@ Here is a walkthrough of what each of the functions will do, and your level need
 /getany: Sends a message with the attendance status of all group members (and subgroup members) for any day (Member)
 /getusermonth: Sends a message with the attendance status of a user over the past month (Member)
 /getuserany: Sends a message with the attendance status of a user over any period of time (Member)
+/getallusersmonth: Sends a message with the attendance status of all users in the group over the past month (Admin)
+/getallusersany: Sends a message with the attendance status of all users in the group over any period of time (Admin)
 
 To perform a function, call /enter first to enter a group. Your actions will be localized within the group. 
 """

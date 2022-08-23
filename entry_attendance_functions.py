@@ -91,6 +91,33 @@ def get_user_attendance_arbitrary(update_obj: Update, context: CallbackContext) 
     return settings.FIRST
 
 
+# Gets the attendance of all users in the group over the past month
+def get_all_users_attendance_month(update_obj: Update, context: CallbackContext) -> int:
+
+    # We first verify that user is in a group, and is at least Admin in the group
+    if not verify_group_and_role(update_obj, context, settings.ADMIN):
+        return ConversationHandler.END
+
+    # Not sure if this is needed, but for consistency
+    update_obj.message.reply_text("Type anything to continue")
+    return settings.FIRST
+
+
+# Gets the attendance of all users in the group over an arbitrary period of time
+def get_all_users_attendance_arbitrary(update_obj: Update, context: CallbackContext) -> int:
+
+    # We first verify that user is in a group, and is at least Admin in the group
+    if not verify_group_and_role(update_obj, context, settings.ADMIN):
+        return ConversationHandler.END
+
+    update_obj.message.reply_text("Key in the start date in 6-digit form in the first row, "
+                                  "and the end date in the third row (both inclusive). Here's an "
+                                  "example of a message that works: ")
+    update_obj.message.reply_text("260622\n"
+                                  "030822")
+    return settings.FIRST
+
+
 # Changes attendance in the group you are in, for today
 # Ok implement two functions: one to change today's attendance, the other to change tomorrow's
 def change_attendance(update_obj: Update, context: CallbackContext) -> int:

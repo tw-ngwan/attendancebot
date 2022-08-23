@@ -41,7 +41,8 @@ from telegram.ext import Updater, ConversationHandler, CommandHandler, MessageHa
 import settings
 from entry_attendance_functions import get_today_group_attendance, get_tomorrow_group_attendance, \
     get_any_day_group_attendance, change_attendance, change_any_day_attendance, \
-    get_user_attendance_month, get_user_attendance_arbitrary
+    get_user_attendance_month, get_user_attendance_arbitrary, \
+    get_all_users_attendance_month, get_all_users_attendance_arbitrary
 from entry_group_functions import create_group, enter_group, leave_group, current_group, delete_group, merge_groups, \
     join_existing_group, quit_group, change_group_title, uprank, get_group_passwords
 from entry_help_functions import start, user_help, user_help_full
@@ -50,7 +51,8 @@ from entry_user_functions import add_users, get_users, remove_users, edit_users,
 from state_attendance_functions import change_today_attendance_follow_up, change_tomorrow_attendance_follow_up, \
     change_any_day_attendance_get_day, change_any_day_attendance_follow_up, \
     get_specific_day_group_attendance_follow_up, get_user_attendance_month_follow_up, \
-    get_user_attendance_arbitrary_follow_up
+    get_user_attendance_arbitrary_follow_up, \
+    get_all_users_attendance_month_follow_up, get_all_users_attendance_arbitrary_follow_up
 from state_group_functions import create_group_follow_up, enter_group_follow_up, delete_group_follow_up, \
     join_group_get_group_code, join_group_follow_up, quit_group_follow_up, change_group_title_follow_up, \
     uprank_follow_up, merge_groups_check_super_group, merge_groups_start_add_users, merge_groups_follow_up
@@ -70,40 +72,6 @@ print("Bot starting...")
 
 # Initialize all global variables
 settings.init()
-
-commands = """
-/start: Once you activate the bot, it will send you the attendance statuses of each group you're in every day. (None)/
-/help: Gives you the list of commands available (None)/
-/helpfull: Gives you the full list of commands available (None)/
-
-/creategroup: Creates a group within your current group. Don't accidentally make subgroups! (None, Admin) /
-/enter: Enters group to do stuff in the group (Observer)/
-/leave: Leaves group you are currently in after you finish doing stuff (Observer) /
-/current: Tells you the current group you are in, and None if not (Observer) /
-/deletegroup: Deletes the group. Needs Admin privileges, and prompt to do so (Admin) /
-/mergegroups: Merges two groups together, with one becoming the parent group, and the other its child (Admin) /
-/joingroup: Joins a group that already exists, using its group id. (None) /
-/quitgroup: Quits and exits your group. Do NOT confuse with leave! (Observer) /
-/changetitle: Changes group title. Admin privileges required. (Admin) /
-/getgroupcodes: Sends messages with the group code, and group passwords relative to your level (any)/
-/uprank: Promotes user to Admin/Member, with the correct password (Observer/Member) /
-
-/addusers: Adds users to the group you are currently in (/enter). Recursive, till enter OK (Member)/
-/removeusers: Removes users from the group you are currently in. Recursive, till enter OK (Admin)/
-/editusers: Changes the names and details of the user (Admin)/
-/getusers: Gets the names of all users (Observer)/
-/changeordering: Swaps the ranks of two users (Member) /
-/changeusergroup: Transfers users from one group to another (Admin) /
-
-/change: Changes the attendance status of any group members of group you are currently in, for current day (Member)/
-/changetmr: Changes the attendance status of any group members of group you are currently in, for next day (Member)/
-/changeany: Changes the attendance status of any group members on any day, including backdating (Admin) /
-/get: Sends a message with the attendance status of all group members (and subgroup members) for current day (Observer)/
-/gettmr: Sends a message with the attendance status of all group members (and subgroup members) for next day (Observer)/
-/getany: Sends a message with the attendance status of all group members (and subgroup members) for any day (Member)/
-/getusermonth: Sends a message with the attendance status of a user over the past month (Member)/
-/getuserany: Sends a message with the attendance status of a user over any period of time (Member) /
-"""
 
 "Schedule message: https://stackoverflow.com/questions/48288124/how-to-send-message-in-specific-time-telegrambot"
 "If you need to remake a table: "
@@ -264,6 +232,20 @@ def main():
         },
         fallbacks=[]
     )
+    get_all_users_attendance_month_handler = ConversationHandler(
+        entry_points=[CommandHandler('/getallusersmonth', get_all_users_attendance_month)],
+        states={
+            settings.FIRST: [MessageHandler(Filters.text, get_all_users_attendance_month_follow_up)]
+        },
+        fallbacks=[]
+    )
+    get_all_users_attendance_arbitrary_handler = ConversationHandler(
+        entry_points=[CommandHandler('/getallusersany', get_all_users_attendance_arbitrary)],
+        states={
+            settings.FIRST: [MessageHandler(Filters.text, get_all_users_attendance_arbitrary_follow_up)]
+        },
+        fallbacks=[]
+    )
     change_today_attendance_handler = ConversationHandler(
         entry_points=[CommandHandler('change', change_attendance)],
         states={
@@ -298,6 +280,7 @@ def main():
 
                     get_today_attendance_handler, get_tomorrow_attendance_handler, get_any_day_attendance_handler,
                     get_user_attendance_month_handler, get_user_attendance_arbitrary_handler,
+                    get_all_users_attendance_month_handler, get_all_users_attendance_arbitrary_handler,
                     change_today_attendance_handler, change_tomorrow_attendance_handler,
                     change_any_day_attendance_handler
                     ]
