@@ -233,14 +233,14 @@ def main():
         fallbacks=[]
     )
     get_all_users_attendance_month_handler = ConversationHandler(
-        entry_points=[CommandHandler('/getallusersmonth', get_all_users_attendance_month)],
+        entry_points=[CommandHandler('getallusersmonth', get_all_users_attendance_month)],
         states={
             settings.FIRST: [MessageHandler(Filters.text, get_all_users_attendance_month_follow_up)]
         },
         fallbacks=[]
     )
     get_all_users_attendance_arbitrary_handler = ConversationHandler(
-        entry_points=[CommandHandler('/getallusersany', get_all_users_attendance_arbitrary)],
+        entry_points=[CommandHandler('getallusersany', get_all_users_attendance_arbitrary)],
         states={
             settings.FIRST: [MessageHandler(Filters.text, get_all_users_attendance_arbitrary_follow_up)]
         },

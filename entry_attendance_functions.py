@@ -99,7 +99,7 @@ def get_all_users_attendance_month(update_obj: Update, context: CallbackContext)
         return ConversationHandler.END
 
     # Not sure if this is needed, but for consistency
-    update_obj.message.reply_text("Type anything to continue")
+    update_obj.message.reply_text("Do you want to get attendance of all subgroups as well? (y/n)")
     return settings.FIRST
 
 
@@ -110,10 +110,12 @@ def get_all_users_attendance_arbitrary(update_obj: Update, context: CallbackCont
     if not verify_group_and_role(update_obj, context, settings.ADMIN):
         return ConversationHandler.END
 
-    update_obj.message.reply_text("Key in the start date in 6-digit form in the first row, "
+    update_obj.message.reply_text("Key in whether you want to get attendance of all subgroups in the first row (y/n), "
+                                  "the start date in 6-digit form in the second row, "
                                   "and the end date in the third row (both inclusive). Here's an "
                                   "example of a message that works: ")
-    update_obj.message.reply_text("260622\n"
+    update_obj.message.reply_text("y\n"
+                                  "260622\n"
                                   "030822")
     return settings.FIRST
 

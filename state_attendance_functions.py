@@ -1,5 +1,6 @@
 """Implementation of functions needed for attendance functions beyond the first one
 Responds to messages and stores the messages given """
+import sqlite3
 
 from telegram import Update
 from telegram.ext import CallbackContext, ConversationHandler
@@ -7,7 +8,7 @@ import settings
 import datetime
 from backend_implementations import get_admin_reply, check_valid_datetime, \
     get_day_group_attendance, change_group_attendance_backend, get_intended_users, get_single_user_attendance_backend, \
-    convert_rank_to_id, get_group_size
+    convert_rank_to_id, get_group_size, get_child_groups
 from entry_attendance_functions import _change_attendance_send_messages
 
 
@@ -137,19 +138,18 @@ def get_user_attendance_arbitrary_follow_up(update_obj: Update, context: Callbac
 # Gets the attendance of all users over the past 31 days
 def get_all_users_attendance_month_follow_up(update_obj: Update, context: CallbackContext) -> int:
 
-    # Get current_group_id, and the group_size
-    group_id = settings.current_group_id
-    group_size = get_group_size(group_id)
+    # Get the group_id
+    chat_id, get_subgroups = get_admin_reply(update_obj, context)
+    group_id = settings.current_group_id[chat_id]
 
-    # Generates the user text to be used
-    user_text = ' '.join([str(i) for i in range(1, group_size + 1)])
+    get_subgroups = get_subgroups.strip().lower()
 
-    # Gets the end and start dates
+    # Get the start and end dates
     end_date = datetime.date.today()
     start_date = datetime.date.today() - datetime.timedelta(days=31)
 
-    # Sends all the attendance messages, after verification
-    _get_user_attendance_process(update_obj, context, user_text, start_date, end_date)
+    # Gets the attendance for the groups you need, depending on get_subgroups recursive or not
+    _get_all_users_attendance_process(update_obj, context, group_id, start_date, end_date, get_subgroups)
     return ConversationHandler.END
 
 
@@ -160,18 +160,16 @@ def get_all_users_attendance_arbitrary_follow_up(update_obj: Update, context: Ca
     chat_id, admin_instructions = get_admin_reply(update_obj, context)
     admin_instructions = [instruction for instruction in admin_instructions.split('\n') if instruction]
     try:
-        start_date, end_date = admin_instructions
+        get_subgroups, start_date, end_date = admin_instructions
     except ValueError:
         update_obj.message.reply_text("Users entered in an incorrect format! Refer to above to see how to "
                                       "enter users and dates!")
         return ConversationHandler.END
 
-    # Get current_group_id, and the group_size
-    group_id = settings.current_group_id
-    group_size = get_group_size(group_id)
+    get_subgroups = get_subgroups.strip().lower()
 
-    # Generates the user text to be used
-    user_text = ' '.join([str(i) for i in range(1, group_size + 1)])
+    # Get current_group_id
+    group_id = settings.current_group_id[chat_id]
 
     # Gets the dates that the admin wants, and verifies that they are valid first.
     today = datetime.date.today()
@@ -187,16 +185,34 @@ def get_all_users_attendance_arbitrary_follow_up(update_obj: Update, context: Ca
                                       "The start date must be before the end date. ")
         return ConversationHandler.END
 
-    # Sends all the attendance messages, after verification
-    _get_user_attendance_process(update_obj, context, user_text, start_date, end_date)
+    # Gets the attendance for the groups you need
+    _get_all_users_attendance_process(update_obj, context, group_id, start_date, end_date, get_subgroups)
     return ConversationHandler.END
+
+
+# The backend for getting all users' attendance, recursively
+def _get_all_users_attendance_process(update_obj: Update, context: CallbackContext, group_id: int,
+                                      start_date: datetime.date, end_date: datetime.date, get_subgroups: str) -> None:
+    group_size = get_group_size(group_id)
+    # Generates the user text to be used
+    user_text = ' '.join([str(i) for i in range(1, group_size + 1)])
+
+    # Sends all the attendance messages, after verification
+    _get_user_attendance_process(update_obj, context, user_text, start_date, end_date, current_group=group_id)
+
+    # If recursive, do recursively
+    if get_subgroups == 'y':
+        child_group_ids = get_child_groups(group_id)
+        for child_id in child_group_ids:
+            _get_all_users_attendance_process(update_obj, context, child_id, start_date, end_date, get_subgroups)
 
 
 # The backend process for getting attendance. Implemented by both get_user_attendance functions.
 def _get_user_attendance_process(update_obj: Update, context: CallbackContext, user_text: str,
-                                 start_date: datetime.date, end_date: datetime.date) -> bool:
+                                 start_date: datetime.date, end_date: datetime.date,
+                                 current_group=None) -> bool:
     chat_id = update_obj.message.chat_id
-    current_group = settings.current_group_id[chat_id]
+    current_group = settings.current_group_id[chat_id] if current_group is None else current_group
     users = get_intended_users(user_text, current_group)
     if not users:
         update_obj.message.reply_text("Users not entered correctly!")

@@ -226,16 +226,7 @@ def get_day_group_attendance(context: CallbackContext, day: datetime.date, curre
 def get_day_group_attendance_message_recursive(day: datetime.date, group_id: int,
                                                attendance_message_body: list, attendance_status_dict: dict):
     # First, we find the groups that the group is a parent of
-    with sqlite3.connect('attendance.db') as con:
-        cur = con.cursor()
-        cur.execute(
-            """
-            SELECT id 
-              FROM groups 
-             WHERE parent_id = ?""", (group_id, )
-        )
-        parsed_message = cur.fetchall()
-        group_ids = [val[0] for val in parsed_message]
+    group_ids = get_child_groups(group_id)
 
     current_attendance_message_body, current_attendance_status_dict = get_group_attendance_backend(group_id, day)
 
@@ -826,3 +817,19 @@ def get_group_size(group_id):
         group_size = group_size[0][0]
         con.commit()
     return group_size
+
+
+# Get the child groups of a group
+def get_child_groups(group_id):
+    with sqlite3.connect('attendance.db') as con:
+        cur = con.cursor()
+        cur.execute(
+            """
+            SELECT id 
+              FROM groups 
+             WHERE parent_id = ?""", (group_id,)
+        )
+        parsed_message = cur.fetchall()
+        group_ids = [val[0] for val in parsed_message]
+
+    return group_ids
