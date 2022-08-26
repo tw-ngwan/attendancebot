@@ -10,6 +10,12 @@ from dateutil import tz
 from backend_implementations import get_day_group_attendance
 
 
+"""
+TypeError: Only timezones from the pytz library are supported
+Resolution is to set tzinfo==2.1 in requirements.txt. Check to reorder again, possibly institute a setup.py
+"""
+
+
 # Entry function
 def start(update_obj: Update, context: CallbackContext) -> ConversationHandler.END:
 
