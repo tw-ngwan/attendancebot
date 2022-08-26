@@ -1,13 +1,6 @@
 """
 #TODO
-I FINISHED THE CODE!!!!!
-OK not really done, still have encryption.
-But here's what you need to do:
-1. Do a stress test yourself, to ensure that all functions are working. Try more functions with mergegroup, and stuff
-2. Edit this file to make the code clearer, edit away all the useless/outdated stuff
-3. Maybe create a new helpbasic function that explains only the necessary functions, and a full help function
-4. After you deploy the code and users can use it, start encrypting all the data for users to use
-4. After you deploy the code and users can use it, start encrypting all the data for users to use
+May want to add encryption.
 
 Bot Description:
 This attendance bot tracks attendance of groups, of which each group contains users. Each group can be the subgroup
