@@ -58,7 +58,7 @@ API_KEY = '5323812726:AAHp0FgvJ1alHLnJunqL_DyKMZdXVVLztLM'
 # API_KEY = os.getenv("ATTENDANCE_TELEGRAM_API")
 
 # Port number to listen in for the webhook
-PORT = int(os.environ.get('PORT', 5000))
+PORT = int(os.environ.get('PORT', 8443))
 
 # Letting Telegram know which bot to run code on
 updater = Updater(API_KEY)
