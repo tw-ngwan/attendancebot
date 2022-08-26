@@ -286,10 +286,12 @@ def main():
         dispatcher.add_handler(handler)
 
     # Start the bot, let it wait for a user command
-    updater.start_webhook(listen="0.0.0.0",
-                          port=int(PORT),
-                          url_path=API_KEY)
-    updater.bot.set_webhook(f'https://attendance-6bot.herokuapp.com/{API_KEY}')
+    updater.start_polling()
+    # This allows it to use a webhook to retrieve data immediately
+    # updater.start_webhook(listen="0.0.0.0",
+    #                       port=int(PORT),
+    #                       url_path=API_KEY)
+    # updater.bot.set_webhook(f'https://attendance-6bot.herokuapp.com/{API_KEY}')
 
     # Run the bot until you press Ctrl-C
     updater.idle()
