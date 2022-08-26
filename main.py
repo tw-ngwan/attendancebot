@@ -56,6 +56,9 @@ from state_user_functions import add_user_follow_up, remove_user_verification, r
 # Getting the API_KEY
 API_KEY = os.getenv("ATTENDANCE_TELEGRAM_API")
 
+# Port number to listen in for the webhook
+PORT = int(os.environ.get('PORT', 5000))
+
 # Letting Telegram know which bot to run code on
 updater = Updater(API_KEY)
 dispatcher = updater.dispatcher
@@ -282,8 +285,12 @@ def main():
         dispatcher.add_handler(handler)
 
     # Start the bot, let it wait for a user command
-    updater.start_polling()
+    updater.start_webhook(listen="0.0.0.0",
+                          port=int(PORT),
+                          url_path=API_KEY)
+    updater.bot.set_webhook(f'https://attendance-6bot.herokuapp.com/{API_KEY}')
 
+    # Run the bot until you press Ctrl-C
     updater.idle()
 
 
