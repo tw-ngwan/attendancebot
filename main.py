@@ -54,11 +54,7 @@ from state_user_functions import add_user_follow_up, remove_user_verification, r
     change_user_group_follow_up
 
 # Getting the API_KEY
-API_KEY = '5323812726:AAHp0FgvJ1alHLnJunqL_DyKMZdXVVLztLM'
-# API_KEY = os.getenv("ATTENDANCE_TELEGRAM_API")
-
-# Port number to listen in for the webhook
-PORT = int(os.environ.get('PORT', 8443))
+API_KEY = os.getenv("API_KEY_TELEGRAM")
 
 # Letting Telegram know which bot to run code on
 updater = Updater(API_KEY)
