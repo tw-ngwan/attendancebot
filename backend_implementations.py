@@ -6,10 +6,11 @@ from telegram.ext import CallbackContext
 from string import ascii_uppercase, ascii_lowercase, digits
 from collections import defaultdict
 import random
-import sqlite3
 import shelve
 import datetime
 import settings
+from data import con_config
+import psycopg2
 
 
 # Generates a random password
@@ -44,22 +45,22 @@ def get_admin_reply(update_obj: Update, context: CallbackContext):
 def get_admin_groups(chat_id):
     """Gets the groups that an admin is in.
     Returns a list of tuples: (group_name, group_id, role)"""
-    with sqlite3.connect('attendance.db') as con:
-        cur = con.cursor()
-        cur.execute(
-            """
-            SELECT groups.Name, admins.group_id, admins.role, groups.GroupCode
-              FROM admins
-              JOIN groups 
-                ON admins.group_id = groups.id 
-             WHERE admins.chat_id = ?
-            """,
-            (chat_id,)
-        )
-        user_groups = cur.fetchall()
+    with psycopg2.connect(**con_config()) as con:
+        with con.cursor() as cur:
+            cur.execute(
+                """
+                SELECT groups.Name, admins.group_id, admins.role, groups.GroupCode
+                  FROM admins
+                  JOIN groups 
+                    ON admins.group_id = groups.id 
+                 WHERE admins.chat_id = %s
+                """,
+                (chat_id,)
+            )
+            user_groups = cur.fetchall()
 
-        # Save changes
-        con.commit()
+            # Save changes
+            con.commit()
 
     # user_groups is a list of tuples, where each tuple is of the form (Group Name, Group ID, Role)
     return user_groups
@@ -68,19 +69,19 @@ def get_admin_groups(chat_id):
 # Gets all the group members of a group
 def get_group_members(group_id):
     """Returns a list of tuples: (group_id, group_name)"""
-    with sqlite3.connect('attendance.db') as con:
-        cur = con.cursor()
-        cur.execute(
-            """
-            SELECT id, Name FROM users
-             WHERE group_id = ?
-             ORDER BY rank
-            """,
-            (group_id,)
-        )
-        all_ids = cur.fetchall()
+    with psycopg2.connect(**con_config()) as con:
+        with con.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, Name FROM users
+                 WHERE group_id = %s
+                 ORDER BY rank
+                """,
+                (group_id,)
+            )
+            all_ids = cur.fetchall()
 
-        con.commit()
+            con.commit()
     return all_ids
 
 
@@ -112,22 +113,23 @@ def verify_group_and_role(update_obj: Update, context: CallbackContext, role: st
 def check_admin_privileges(chat_id, group_id):
     """Checks if a user is an admin, member, observer, or None.
     If admin, returns 0. If member, returns 1. If observer, returns 2. If none, returns 3"""
-    with sqlite3.connect('attendance.db') as con:
-        cur = con.cursor()
-        cur.execute(
-            """
-            SELECT role 
-              FROM admins 
-             WHERE chat_id = ? 
-               AND group_id = ?
-            """,
-            (chat_id, group_id)
-        )
-        roles = cur.fetchall()
-        if not roles:
-            return 3
-        roles_dict = {settings.ADMIN: 0, settings.MEMBER: 1, settings.OBSERVER: 2}
-        con.commit()
+    with psycopg2.connect(**con_config()) as con:
+        with con.cursor() as cur:
+            cur.execute(
+                """
+                SELECT role 
+                  FROM admins 
+                 WHERE chat_id = %s
+                   AND group_id = %s
+                """,
+                (chat_id, group_id)
+            )
+            roles = cur.fetchall()
+            if not roles:
+                return 3
+            roles_dict = {settings.ADMIN: 0, settings.MEMBER: 1, settings.OBSERVER: 2}
+
+            con.commit()
 
     return roles_dict[roles[0][0]]
 
@@ -266,151 +268,156 @@ def get_group_attendance_backend(group_id: int, date: datetime.date = None):
     today = datetime.date.today()
     num_days_to_add = (date - today).days
 
-    # This is the date_message that will be passed to sqlite when checking which date will be used
-    date_message = f"{num_days_to_add} day"
+    # # This is the date_message that will be passed to sqlite when checking which date will be used
+    # date_message = f"{num_days_to_add} day"
 
     # Get the attendance of the non-present people for the day
-    with sqlite3.connect('attendance.db') as con:
-        cur = con.cursor()
+    with psycopg2.connect(**con_config()) as con:
+        with con.cursor() as cur:
 
-        # Gets the attendance of the non-present people for the day
-        cur.execute(
-            """
-            SELECT users.id, users.Name, TimePeriod, AttendanceStatus 
-              FROM attendance
-              JOIN users 
-               ON users.id = attendance.user_id 
-             WHERE Date = date('now', ?)
-               AND attendance.user_id 
-                IN (
-                    SELECT id FROM users WHERE group_id = ?
+            # Gets the attendance of the non-present people for the day
+            cur.execute(
+                """
+                SELECT users.id, users.Name, TimePeriod, AttendanceStatus 
+                  FROM attendance
+                  JOIN users 
+                   ON users.id = attendance.user_id 
+                 WHERE Date = CURRENT_DATE + %s
+                   AND attendance.user_id 
+                    IN (
+                        SELECT id FROM users WHERE group_id = %s
+                ) AS x
+                """,
+                (num_days_to_add, group_id)
             )
-            """,
-            (date_message, group_id)
-        )
 
-        # group_attendance is a list of tuples; each tuple comprises (user_id, user_name, time_period, status)
-        group_attendance = cur.fetchall()
+            # group_attendance is a list of tuples; each tuple comprises (user_id, user_name, time_period, status)
+            group_attendance = cur.fetchall()
 
-        # Gets the number of time periods to be updated per day
-        cur.execute("""SELECT Name, NumDailyReports FROM groups WHERE id = ?""", (group_id,))
-        group_name, num_daily_reports = cur.fetchall()[0]
+            # Gets the number of time periods to be updated per day
+            cur.execute("""SELECT Name, NumDailyReports FROM groups WHERE id = %s""", (group_id,))
+            group_name, num_daily_reports = cur.fetchall()[0]
 
-        # How this works:
-        # I create a dict, that stores values like this: {id: [Name, [Attendance[0], Attendance[1], ...]]}
-        group_attendance_dict = {}
-        for member in group_attendance:
-            if member[0] not in group_attendance_dict:
-                group_attendance_dict[member[0]] = [member[1], ['P'] * num_daily_reports]
-            group_attendance_dict[member[0]][1][member[2] - 1] = member[3]
+            # How this works:
+            # I create a dict, that stores values like this: {id: [Name, [Attendance[0], Attendance[1], ...]]}
+            group_attendance_dict = {}
+            for member in group_attendance:
+                if member[0] not in group_attendance_dict:
+                    group_attendance_dict[member[0]] = [member[1], ['P'] * num_daily_reports]
+                group_attendance_dict[member[0]][1][member[2] - 1] = member[3]
 
-        # Gets the attendance of the remaining people. Comes in the form of a list of tuples: (id, name)
-        all_members = get_group_members(group_id)
+            # Gets the attendance of the remaining people. Comes in the form of a list of tuples: (id, name)
+            all_members = get_group_members(group_id)
 
-        # Create a list to see the ids of people whose attendance are not added yet
-        non_added_attendance_ids = []
+            # Create a list to see the ids of people whose attendance are not added yet
+            non_added_attendance_ids = []
 
-        # Gets a summary of the attendance statuses of the entire group
-        attendance_status_dict = defaultdict(int)
+            # Gets a summary of the attendance statuses of the entire group
+            attendance_status_dict = defaultdict(int)
 
-        # Generates the message for the attendance of the remaining people. We first add the group_title ("" for \n)
-        attendance_message_body = [f"*{group_name}*", ""]
+            # Generates the message for the attendance of the remaining people. We first add the group_title ("" for \n)
+            attendance_message_body = [f"*{group_name}*", ""]
 
-        # We need to keep the sequence so simple enum will not work
-        for i in range(len(all_members)):
-            if all_members[i][0] in group_attendance_dict:
+            # We need to keep the sequence so simple enum will not work
+            for i in range(len(all_members)):
+                if all_members[i][0] in group_attendance_dict:
 
-                # Check if both are the same, if same, then no need the slash, but say till when.
-                if len(set(group_attendance_dict[all_members[i][0]][1])) == 1:
-                    # If present, then just use the regular P message
-                    if group_attendance_dict[all_members[i][0]][1][0] == 'P':
-                        attendance_message_body.append(''.join([str(i + 1), ') ', all_members[i][1], ' - P']))
-                        attendance_status_dict['P'] += 1
+                    # Check if both are the same, if same, then no need the slash, but say till when.
+                    if len(set(group_attendance_dict[all_members[i][0]][1])) == 1:
+                        # If present, then just use the regular P message
+                        if group_attendance_dict[all_members[i][0]][1][0] == 'P':
+                            attendance_message_body.append(''.join([str(i + 1), ') ', all_members[i][1], ' - P']))
+                            attendance_status_dict['P'] += 1
 
-                    # If not present, find the final date of the attendance
+                        # If not present, find the final date of the attendance
+                        else:
+
+                            # How this query works
+                            # The query in brackets finds the number of attendance statuses that are different from
+                            # statuses of the days before, for the user and group in question.
+                            # Afterwards, to get the latest date, we select those with zero different statuses compared
+                            # with the previous days (starting from day 0), and select the latest date.
+                            cur.execute(
+                                """
+                                SELECT Date, AttendanceStatus, (
+                                    SELECT COUNT(*) FROM attendance A
+                                    WHERE A.AttendanceStatus <> AT.AttendanceStatus 
+                                    AND A.Date <= AT.Date
+                                    AND A.Date >= date('now', %s)
+                                    AND A.user_id = AT.user_id 
+                                    AND A.group_id = AT.group_id 
+                                ) 
+                                AS RunGroup 
+                                FROM attendance AT
+                                WHERE user_id = %s
+                                AND group_id = %s
+                                AND Date >= CURRENT_DATE + %s
+                                AND RunGroup = 0
+                                ORDER BY Date DESC 
+                                LIMIT 1
+                                """,
+                                (num_days_to_add, all_members[i][0], group_id, num_days_to_add)
+                            )
+                            date_parameters = cur.fetchall()
+                            print(date_parameters)
+                            final_date, attendance_status, rungroup = date_parameters[0]
+                            # print(final_date, attendance_status)
+                            final_date_representation = represent_date(final_date)
+                            assert attendance_status == group_attendance_dict[all_members[i][0]][1][0]
+                            attendance_message_body.append(''.join([str(i + 1), ') ', all_members[i][1], ' - ',
+                                                                    attendance_status, ' till ',
+                                                                    final_date_representation]))
+                            attendance_status_dict[attendance_status] += 1
+
+                    # If both statuses are different, then need the slash
                     else:
+                        attendance_message_body.append(''.join([str(i + 1), ') ',
+                                                                group_attendance_dict[all_members[i][0]][0], ' - ',
+                                                                ' / '.join(
+                                                                    group_attendance_dict[all_members[i][0]][1]
+                                                                )]))
+                        attendance_status_dict[group_attendance_dict[all_members[i][0]][1][0]] += 1
 
-                        # How this query works
-                        # The query in brackets finds the number of attendance statuses that are different from
-                        # statuses of the days before, for the user and group in question.
-                        # Afterwards, to get the latest date, we select those with zero different statuses compared
-                        # with the previous days (starting from day 0), and select the latest date.
-                        cur.execute(
-                            """
-                            SELECT Date, AttendanceStatus, (
-                                SELECT COUNT(*) FROM attendance A
-                                WHERE A.AttendanceStatus <> AT.AttendanceStatus 
-                                AND A.Date <= AT.Date
-                                AND A.Date >= date('now', ?)
-                                AND A.user_id = AT.user_id 
-                                AND A.group_id = AT.group_id 
-                            ) 
-                            AS RunGroup 
-                            FROM attendance AT
-                            WHERE user_id = ? 
-                            AND group_id = ?
-                            AND Date >= date('now', ?) 
-                            AND RunGroup = 0
-                            ORDER BY Date DESC 
-                            LIMIT 1
-                            """,
-                            (date_message, all_members[i][0], group_id, date_message)
-                        )
-                        date_parameters = cur.fetchall()
-                        print(date_parameters)
-                        final_date, attendance_status, rungroup = date_parameters[0]
-                        # print(final_date, attendance_status)
-                        final_date_representation = represent_date(final_date)
-                        assert attendance_status == group_attendance_dict[all_members[i][0]][1][0]
-                        attendance_message_body.append(''.join([str(i + 1), ') ', all_members[i][1], ' - ',
-                                                                attendance_status, ' till ', final_date_representation]))
-                        attendance_status_dict[attendance_status] += 1
-
-                # If both statuses are different, then need the slash
+                    #
+                    #
+                    #
+                    # I think the final message that I need to give would be something along these lines:
+                    # First, I track between two entries, whether they are the same, in
+                    # an ORDERED TABLE by date, where date later than day compared.
+                    # If they are not the same, then break immediately. Else, continue
+                    # Must also check the condition that that date is the latest date. So if no, max rungroup?
+                    # See https://www.sqlteam.com/articles/detecting-runs-or-streaks-in-your-data
+                    # "https://stackoverflow.com/questions/44056555/find-longest-streak-in-sqlite"
+                    # Identifying till when
                 else:
-                    attendance_message_body.append(''.join([str(i + 1), ') ',
-                                                            group_attendance_dict[all_members[i][0]][0], ' - ',
-                                                            ' / '.join(group_attendance_dict[all_members[i][0]][1])]))
-                    attendance_status_dict[group_attendance_dict[all_members[i][0]][1][0]] += 1
+                    non_added_attendance_ids.append(all_members[i][0])
+                    attendance_message_body.append(''.join([str(i + 1), ') ', all_members[i][1], ' - P']))
+                    attendance_status_dict['P'] += 1
 
-                #
-                #
-                #
-                # I think the final message that I need to give would be something along these lines:
-                # First, I track between two entries, whether they are the same, in
-                # an ORDERED TABLE by date, where date later than day compared.
-                # If they are not the same, then break immediately. Else, continue
-                # Must also check the condition that that date is the latest date. So if no, max rungroup?
-                # See https://www.sqlteam.com/articles/detecting-runs-or-streaks-in-your-data
-                # "https://stackoverflow.com/questions/44056555/find-longest-streak-in-sqlite"  # Identifying till when
-            else:
-                non_added_attendance_ids.append(all_members[i][0])
-                attendance_message_body.append(''.join([str(i + 1), ') ', all_members[i][1], ' - P']))
-                attendance_status_dict['P'] += 1
+            # Adding the attendances of all the present users
+            # I think you may need to edit this to exclude weekends. Wait probably not, I should edit somewhere else
+            users_to_add = [(group_id, user, i + 1, num_days_to_add) for user in non_added_attendance_ids
+                            for i in range(num_daily_reports)]
+            cur.executemany(
+                """
+                INSERT INTO attendance
+                (group_id, user_id, TimePeriod, Date, AttendanceStatus)
+                VALUES 
+                (%s, %s, %s, CURRENT_DATE + %s, 'P')""",
+                users_to_add
+            )
 
-        # Adding the attendances of all the present users
-        # I think you may need to edit this to exclude weekends. Wait probably not, I should edit somewhere else
-        users_to_add = [(group_id, user, i + 1, date_message) for user in non_added_attendance_ids
-                        for i in range(num_daily_reports)]
-        cur.executemany(
-            """
-            INSERT INTO attendance
-            (group_id, user_id, TimePeriod, Date, AttendanceStatus)
-            VALUES 
-            (?, ?, ?, date('now', ?), 'P')""",
-            users_to_add
-        )
+            print(attendance_status_dict)
+            # # I'm thinking of returning attendance_status_dict instead of this
+            # # in order to concatenate values efficiently
+            # attendance_message_summary = [f"Strength: {sum(attendance_status_dict.values())}",
+            #                               f"Present: {attendance_status_dict['P']}\n"] + \
+            #                              [''.join([key, ": ", f"{attendance_status_dict[key]:02d}"])
+            #                                  for key in attendance_status_dict if key != 'P']
+            # print(attendance_message_summary)
 
-        print(attendance_status_dict)
-        # # I'm thinking of returning attendance_status_dict instead of this in order to concatenate values efficiently
-        # attendance_message_summary = [f"Strength: {sum(attendance_status_dict.values())}",
-        #                               f"Present: {attendance_status_dict['P']}\n"] + \
-        #                              [''.join([key, ": ", f"{attendance_status_dict[key]:02d}"])
-        #                                  for key in attendance_status_dict if key != 'P']
-        # print(attendance_message_summary)
-
-        # Save changes
-        con.commit()
+            # Save changes
+            con.commit()
 
     # Returns the body of the attendance message for people who need it
     return attendance_message_body, attendance_status_dict
@@ -457,6 +464,7 @@ def change_group_attendance_backend(update_obj: Update, context: CallbackContext
 
         # Next, we check what format the attendance is entered in.
         # First, we check if this is the long attendance.
+        entry[1] = entry[1].lower()
         if 'till' in entry[1]:
             status, final_date = entry[1].split('till')
             status = status.strip()
@@ -496,36 +504,37 @@ def change_group_attendance_backend(update_obj: Update, context: CallbackContext
 
         # This updates the user's attendance for all
         # Update the attendance of the user
-        with sqlite3.connect('attendance.db') as con:
-            cur = con.cursor()
-            # Gets the values of all
-            status = [value.strip().upper() for value in status.split('/')]
+        with psycopg2.connect(**con_config()) as con:
+            with con.cursor() as cur:
+                # Gets the values of all
+                status = [value.strip().upper() for value in status.split('/')]
 
-            # You need to update the date to make it correct. It can be either today or tomorrow.
-            # For now, implementation is today. What this does is create one entry for each day, for each
-            # time period. All of them then get updated at once using executemany.
-            # This implementation can potentially be improved
-            # Add functionality to only insert if the days are not weekends; this has to be done in Python not SQLite
-            attendances_to_update = [(current_group, user_id, j + 1, f'{i + num_days_difference} day',
-                                      status[j], status[j]) for i in range(num_days) for j in range(len(status))
-                                     if (day + datetime.timedelta(days=i)).weekday() <= 4]
-            # print(attendances_to_update)
+                # You need to update the date to make it correct. It can be either today or tomorrow.
+                # For now, implementation is today. What this does is create one entry for each day, for each
+                # time period. All of them then get updated at once using executemany.
+                # This implementation can potentially be improved
+                # Add functionality to only insert if the days are not weekends;
+                # this has to be done in Python not SQLite
+                attendances_to_update = [(current_group, user_id, j + 1, num_days_difference,
+                                          status[j], status[j]) for i in range(num_days) for j in range(len(status))
+                                         if (day + datetime.timedelta(days=i)).weekday() <= 4]
+                # print(attendances_to_update)
 
-            # Inserts all the values into the table
-            # This needs to be edited, it should be updating values, not inserting values
-            cur.executemany(
-                """
-                INSERT INTO attendance
-                (group_id, user_id, TimePeriod, Date, AttendanceStatus)
-                VALUES (?, ?, ?, date('now', ?), ?)
-                ON CONFLICT(group_id, user_id, TimePeriod, Date) 
-                DO UPDATE SET AttendanceStatus = ?
-                """,
-                attendances_to_update
-            )
+                # Inserts all the values into the table
+                # This needs to be edited, it should be updating values, not inserting values
+                cur.executemany(
+                    """
+                    INSERT INTO attendance
+                    (group_id, user_id, TimePeriod, Date, AttendanceStatus)
+                    VALUES (%s, %s, %s, CURRENT_DATE + %s, %s)
+                    ON CONFLICT(group_id, user_id, TimePeriod, Date) 
+                    DO UPDATE SET AttendanceStatus = %s
+                    """,
+                    attendances_to_update
+                )
 
-            # Save changes
-            con.commit()
+                # Save changes
+                con.commit()
 
         # Update user about success
         update_obj.message.reply_text(f"User {entry[0]}'s attendance updated.")
@@ -548,78 +557,78 @@ def parse_user_change_instructions(message: str):
 # If don't have, will assume that get attendance of the past month
 def get_single_user_attendance_backend(group_id: int, user_id: int, start_date: datetime.date, end_date: datetime.date):
 
-    with sqlite3.connect('attendance.db') as con:
-        cur = con.cursor()
-        cur.execute(
-            """
-            SELECT TimePeriod, Date, AttendanceStatus
-              FROM attendance
-             WHERE group_id = ? 
-               AND user_id = ? 
-               AND Date >= ? 
-               AND Date <= ?
-             ORDER BY Date, TimePeriod 
-            """,
-            (group_id, user_id, start_date, end_date)
+    with psycopg2.connect(**con_config()) as con:
+        with con.cursor() as cur:
+            cur.execute(
+                """
+                SELECT TimePeriod, Date, AttendanceStatus
+                  FROM attendance
+                 WHERE group_id = %s 
+                   AND user_id = %s 
+                   AND Date >= %s 
+                   AND Date <= %s
+                 ORDER BY Date, TimePeriod 
+                """,
+                (group_id, user_id, start_date, end_date)
 
-        )
-        # This will be a list of tuples: (TimePeriod, Date, AttendanceStatus)
-        user_statuses = cur.fetchall()
+            )
+            # This will be a list of tuples: (TimePeriod, Date, AttendanceStatus)
+            user_statuses = cur.fetchall()
 
-        cur.execute(
-            """
-            SELECT NumDailyReports
-              FROM groups
-             WHERE id = ?
-             """,
-            (group_id, )
-        )
+            cur.execute(
+                """
+                SELECT NumDailyReports
+                  FROM groups
+                 WHERE id = %s
+                 """,
+                (group_id, )
+            )
 
-        num_daily_reports = cur.fetchall()[0][0]
+            num_daily_reports = cur.fetchall()[0][0]
 
-        cur.execute(
-            """
-            SELECT Name 
-              FROM users
-             WHERE id = ?
-            """,
-            (user_id, )
-        )
+            cur.execute(
+                """
+                SELECT Name 
+                  FROM users
+                 WHERE id = %s
+                """,
+                (user_id, )
+            )
 
-        user_name = cur.fetchall()[0][0]
+            user_name = cur.fetchall()[0][0]
 
-        # # Number of days of attendance gotten
-        # num_days = (end_date - start_date).days
+            # # Number of days of attendance gotten
+            # num_days = (end_date - start_date).days
 
-        # Data structure: Dictionary of lists. {Date: [Status1, Status2, ...]}
-        user_statuses_revamped = {user_statuses[i][1]: [user_statuses[i + k][2] for k in range(num_daily_reports)]
-                                  for i in range(0, len(user_statuses), num_daily_reports)}
+            # Data structure: Dictionary of lists. {Date: [Status1, Status2, ...]}
+            user_statuses_revamped = {user_statuses[i][1]: [user_statuses[i + k][2] for k in range(num_daily_reports)]
+                                      for i in range(0, len(user_statuses), num_daily_reports)}
 
-        # Dictionary to check summary. Only add if TimePeriod = 1
-        user_attendance_summary = defaultdict(int)
-        for status in user_statuses:
-            if status[0] == 1:
-                user_attendance_summary[status[2]] += 1
+            # Dictionary to check summary. Only add if TimePeriod = 1
+            user_attendance_summary = defaultdict(int)
+            for status in user_statuses:
+                if status[0] == 1:
+                    user_attendance_summary[status[2]] += 1
 
-        # Summary message provided
-        attendance_message_body = [f"Summary for {user_name}:", f"Present: {user_attendance_summary['P']}", ""]
-        attendance_message_body += [f"{att_status}: {user_attendance_summary[att_status]}"
-                                    for att_status in user_attendance_summary if att_status != 'P']
-        attendance_message_body.append("")
+            # Summary message provided
+            attendance_message_body = [f"Summary for {user_name}:", f"Present: {user_attendance_summary['P']}", ""]
+            attendance_message_body += [f"{att_status}: {user_attendance_summary[att_status]}"
+                                        for att_status in user_attendance_summary if att_status != 'P']
+            attendance_message_body.append("")
 
-        # Detailed attendance: Adding attendance for each day of the month
-        for date in user_statuses_revamped:
-            statuses = user_statuses_revamped[date]
-            attendance_to_add = [represent_date(date), ": "]
-            # If all statuses are the same
-            if len(set(statuses)) == 1:
-                attendance_to_add.append(user_statuses_revamped[date][0])
-            else:
-                attendance_to_add.append(' / '.join(user_statuses_revamped[date]))
+            # Detailed attendance: Adding attendance for each day of the month
+            for date in user_statuses_revamped:
+                statuses = user_statuses_revamped[date]
+                attendance_to_add = [represent_date(date), ": "]
+                # If all statuses are the same
+                if len(set(statuses)) == 1:
+                    attendance_to_add.append(user_statuses_revamped[date][0])
+                else:
+                    attendance_to_add.append(' / '.join(user_statuses_revamped[date]))
 
-            attendance_message_body.append(''.join(attendance_to_add))
+                attendance_message_body.append(''.join(attendance_to_add))
 
-            con.commit()
+                con.commit()
 
     return attendance_message_body
 
@@ -652,13 +661,13 @@ def get_intended_users(user_string: str, group_id: int=None):
 
 # Converts user rank into user_id, and verifies that it exists
 def convert_rank_to_id(group_id, user_rank) -> int:
-    with sqlite3.connect('attendance.db') as con:
-        cur = con.cursor()
-        cur.execute(
-            """SELECT id FROM users WHERE group_id = ? AND rank = ?""", (group_id, user_rank)
-        )
-        result = cur.fetchall()
-        con.commit()
+    with psycopg2.connect(**con_config()) as con:
+        with con.cursor() as cur:
+            cur.execute(
+                """SELECT id FROM users WHERE group_id = %s AND rank = %s""", (group_id, user_rank)
+            )
+            result = cur.fetchall()
+            con.commit()
 
     # If not exists, return False, else return True
     return 0 if not result else result[0][0]
@@ -669,12 +678,12 @@ def rank_determination(password: str, group_id: int) -> int:
     """Returns the rank that the user is, and false else"""
 
     # Check for the passwords of the group
-    with sqlite3.connect('attendance.db') as con:
-        cur = con.cursor()
-        cur.execute("""SELECT AdminPassword, MemberPassword, ObserverPassword FROM groups WHERE id = ?""",
-                    (group_id, ))
-        group_passwords = cur.fetchall()[0]
-        con.commit()
+    with psycopg2.connect(**con_config()) as con:
+        with con.cursor() as cur:
+            cur.execute("""SELECT AdminPassword, MemberPassword, ObserverPassword FROM groups WHERE id = %s""",
+                        (group_id, ))
+            group_passwords = cur.fetchall()[0]
+            con.commit()
 
     # Gets which codes are matching
     matching_index = [i for i in range(len(group_passwords)) if group_passwords[i] == password]
@@ -705,18 +714,18 @@ def get_group_id_from_button(message):
             group_code = message[i + 1:len(message) - 1]
             break
 
-    with sqlite3.connect('attendance.db') as con:
-        cur = con.cursor()
-        cur.execute(
-            """
-            SELECT id, Name 
-            FROM groups 
-            WHERE GroupCode = ?""",
-            (group_code, )
-        )
-        groups = cur.fetchall()
-        if not groups:
-            return False, False
+    with psycopg2.connect(**con_config()) as con:
+        with con.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, Name 
+                FROM groups 
+                WHERE GroupCode = %s""",
+                (group_code, )
+            )
+            groups = cur.fetchall()
+            if not groups:
+                return False, False
 
         group_id, group_name = groups[0][0], groups[0][1]
 
@@ -754,82 +763,82 @@ def swap_users(a, b, group_id):
         group_size = get_group_size(group_id)
 
         var = a if a > b else b  # This gets the actual group that is to be swapped (since the group > -1)
-        with sqlite3.connect('attendance.db') as con:
-            cur = con.cursor()
-            # This does the swapping
-            cur.execute(
-                """
-                UPDATE users
-                SET rank = (CASE WHEN rank = ? THEN ? WHEN rank < ? THEN rank ELSE rank - 1 END)
-                WHERE group_id = ?
-                AND rank >= ?""",
-                (var, group_size, var, group_id, var)
-            )
+        with psycopg2.connect(**con_config()) as con:
+            with con.cursor() as cur:
+                # This does the swapping
+                cur.execute(
+                    """
+                    UPDATE users
+                    SET rank = (CASE WHEN rank = %s THEN %s WHEN rank < %s THEN rank ELSE rank - 1 END)
+                    WHERE group_id = %s
+                    AND rank >= %s""",
+                    (var, group_size, var, group_id, var)
+                )
 
-            con.commit()
+                con.commit()
 
         return None
 
     if a == 0 or b == 0:
         var = a if a > b else b  # This gets actual group, see above
         # This does the swapping
-        with sqlite3.connect('attendance.db') as con:
-            cur = con.cursor()
-            cur.execute(
-                """
-                UPDATE users
-                SET rank = (CASE WHEN rank = ? THEN 1 WHEN rank > ? THEN rank ELSE rank + 1 END)
-                WHERE group_id = ?
-                AND rank <= ?""",
-                (var, var, group_id, var)
-            )
+        with psycopg2.connect(**con_config()) as con:
+            with con.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE users
+                    SET rank = (CASE WHEN rank = %s THEN 1 WHEN rank > %s THEN rank ELSE rank + 1 END)
+                    WHERE group_id = %s
+                    AND rank <= %s""",
+                    (var, var, group_id, var)
+                )
 
-            con.commit()
+                con.commit()
 
         return None
 
     # Now, we just swap values
-    with sqlite3.connect('attendance.db') as con:
-        cur = con.cursor()
-        cur.execute(
-            """
-            UPDATE users
-            SET rank = (CASE WHEN rank = ? THEN ? ELSE ? END)
-            WHERE rank IN (?, ?) 
-            AND group_id = ?
-            """, (a, b, a, a, b, group_id)
-        )
+    with psycopg2.connect(**con_config()) as con:
+        with con.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE users
+                SET rank = (CASE WHEN rank = %s THEN %s ELSE %s END)
+                WHERE rank IN (%s, %s) 
+                AND group_id = %s
+                """, (a, b, a, a, b, group_id)
+            )
 
-        # Save changes
-        con.commit()
+            # Save changes
+            con.commit()
 
     return None
 
 
 # Gets the group size of a group
 def get_group_size(group_id):
-    with sqlite3.connect('attendance.db') as con:
-        cur = con.cursor()
-        cur.execute("""SELECT COUNT(*) FROM users WHERE group_id = ?""", (group_id,))
-        group_size = cur.fetchall()
-        if not group_size:
-            return 0
-        group_size = group_size[0][0]
-        con.commit()
+    with psycopg2.connect(**con_config()) as con:
+        with con.cursor() as cur:
+            cur.execute("""SELECT COUNT(*) FROM users WHERE group_id = %s""", (group_id,))
+            group_size = cur.fetchall()
+            if not group_size:
+                return 0
+            group_size = group_size[0][0]
+            con.commit()
     return group_size
 
 
 # Get the child groups of a group
 def get_child_groups(group_id):
-    with sqlite3.connect('attendance.db') as con:
-        cur = con.cursor()
-        cur.execute(
-            """
-            SELECT id 
-              FROM groups 
-             WHERE parent_id = ?""", (group_id,)
-        )
-        parsed_message = cur.fetchall()
-        group_ids = [val[0] for val in parsed_message]
+    with psycopg2.connect(**con_config()) as con:
+        with con.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id 
+                  FROM groups 
+                 WHERE parent_id = %s""", (group_id,)
+            )
+            parsed_message = cur.fetchall()
+            group_ids = [val[0] for val in parsed_message]
 
     return group_ids

@@ -10,7 +10,8 @@ import settings
 from keyboards import yes_no_button_markup, group_name_keyboards
 from backend_implementations import generate_random_password, generate_random_group_code, \
     get_admin_reply, rank_determination, get_group_id_from_button, check_admin_privileges, get_group_size
-import sqlite3
+import psycopg2
+from data import con_config
 
 
 # Gets new group title
@@ -22,44 +23,43 @@ def create_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
         return ConversationHandler.END
 
     # SQLite Execution: To store the group and the new user
-    with sqlite3.connect('attendance.db') as con:
-        cur = con.cursor()
-        current_group = settings.current_group_id[chat_id]
-        group_code = generate_random_group_code()
-        observer_password, member_password, admin_password = generate_random_password(iterations=3)
-        # Stores the group in SQLite. current_group can be None
-        cur.execute(
-            """
-            INSERT INTO groups (
-            parent_id, Name, DateAdded, NumDailyReports, GroupCode, 
-            ObserverPassword, MemberPassword, AdminPassword
+    with psycopg2.connect(**con_config()) as con:
+        with con.cursor() as cur:
+            current_group = settings.current_group_id[chat_id]
+            group_code = generate_random_group_code()
+            observer_password, member_password, admin_password = generate_random_password(iterations=3)
+            # Stores the group in SQLite. current_group can be None
+            cur.execute(
+                """
+                INSERT INTO groups (
+                parent_id, Name, DateAdded, NumDailyReports, GroupCode, 
+                ObserverPassword, MemberPassword, AdminPassword
+                )
+                VALUES (%s, %s, date('now'), 2, %s, %s, %s, %s)
+                """,
+                (current_group, title, group_code, observer_password, member_password, admin_password)
             )
-            VALUES (?, ?, datetime('now'), 2, ?, ?, ?, ?)
-            """,
-            (current_group, title, group_code, observer_password, member_password, admin_password)
-        )
 
-        # Enter the group
-        cur.execute("""SELECT id FROM groups WHERE GroupCode = ?""", (group_code,))
-        group_to_enter = cur.fetchall()[0][0]
-        print(group_to_enter)
-        settings.current_group_id[chat_id] = group_to_enter
-        settings.current_group_name[chat_id] = title
-        con.commit()
+            # Enter the group
+            cur.execute("""SELECT id FROM groups WHERE GroupCode = %s""", (group_code,))
+            group_to_enter = cur.fetchall()[0][0]
+            print(group_to_enter)
+            settings.current_group_id[chat_id] = group_to_enter
+            settings.current_group_name[chat_id] = title
 
-        # Adds the user as an Admin
-        cur.execute(
-            """
-            INSERT INTO admins (
-            group_id, DateAdded, chat_id, role
+            # Adds the user as an Admin
+            cur.execute(
+                """
+                INSERT INTO admins (
+                group_id, DateAdded, chat_id, role
+                )
+                VALUES (%s, CURRENT_DATE, %s, %s)
+                """,
+                (group_to_enter, chat_id, settings.ADMIN)
             )
-            VALUES (?, datetime('now'), ?, ?)
-            """,
-            (group_to_enter, chat_id, settings.ADMIN)
-        )
 
-        # Save all changes
-        con.commit()
+            # Save all changes
+            con.commit()
 
     update_obj.message.reply_text(f"Ok, your group will be named {title}")
     update_obj.message.reply_text(f"This is your group code: {group_code}. The following 3 messages are the "
@@ -106,19 +106,22 @@ def delete_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
         update_obj.message.reply_text("Ok, cancelling job now. ")
         return ConversationHandler.END
 
-    with sqlite3.connect('attendance.db') as con:
-        cur = con.cursor()
+    with psycopg2.connect(**con_config()) as con:
+        with con.cursor() as cur:
 
-        # Delete from attendance first
-        cur.execute("""DELETE FROM attendance WHERE group_id = ?""", (current_group_id, ))
-        # Delete from users
-        cur.execute("""DELETE FROM users WHERE group_id = ?""", (current_group_id, ))
-        # Delete from admins
-        cur.execute("""DELETE FROM admins WHERE group_id = ?""", (current_group_id, ))
-        # Set its child groups to have no parent
-        cur.execute("""UPDATE groups SET parent_id = ? WHERE parent_id = ?""", (None, current_group_id))
-        # Finally, delete the group
-        cur.execute("""DELETE FROM groups WHERE id = ?""", (current_group_id, ))
+            # Delete from attendance first
+            cur.execute("""DELETE FROM attendance WHERE group_id = %s""", (current_group_id, ))
+            # Delete from users
+            cur.execute("""DELETE FROM users WHERE group_id = %s""", (current_group_id, ))
+            # Delete from admins
+            cur.execute("""DELETE FROM admins WHERE group_id = %s""", (current_group_id, ))
+            # Set its child groups to have no parent
+            cur.execute("""UPDATE groups SET parent_id = %s WHERE parent_id = %s""", (None, current_group_id))
+            # Finally, delete the group
+            cur.execute("""DELETE FROM groups WHERE id = %s""", (current_group_id, ))
+
+            # Save changes
+            con.commit()
 
     # Leave the group
     settings.current_group_id[chat_id] = None
@@ -134,10 +137,10 @@ def join_group_get_group_code(update_obj: Update, context: CallbackContext) -> i
     chat_id, message = get_admin_reply(update_obj, context)
 
     # Check if the group code exists
-    with sqlite3.connect('attendance.db') as con:
-        cur = con.cursor()
-        cur.execute("""SELECT id, Name FROM groups WHERE GroupCode = ?""", (message.strip().upper(), ))
-        group_details = cur.fetchall()
+    with psycopg2.connect(**con_config()) as con:
+        with con.cursor() as cur:
+            cur.execute("""SELECT id, Name FROM groups WHERE GroupCode = %s""", (message.strip().upper(), ))
+            group_details = cur.fetchall()
 
     if not group_details:
         update_obj.message.reply_text("Group code entered does not correspond with any group!")
@@ -163,19 +166,19 @@ def join_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
         return ConversationHandler.END
 
     # Adds the admin into the group
-    with sqlite3.connect('attendance.db') as con:
-        cur = con.cursor()
-        cur.execute(
-            """
-            INSERT INTO admins
-            (group_id, DateAdded, chat_id, role)
-            VALUES (?, date('now'), ?, ?)
-            """,
-            (group_id, chat_id, user_rank)
-        )
+    with psycopg2.connect(**con_config()) as con:
+        with con.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO admins
+                (group_id, DateAdded, chat_id, role)
+                VALUES (%s, CURRENT_DATE, %s, %s)
+                """,
+                (group_id, chat_id, user_rank)
+            )
 
-        # Saves changes
-        con.commit()
+            # Saves changes
+            con.commit()
 
     # Saves the changes to group
     settings.current_group_id[chat_id] = group_id
@@ -197,11 +200,12 @@ def quit_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
         return ConversationHandler.END
 
     # Deletes the user from the admins table
-    with sqlite3.connect('attendance.db') as con:
-        cur = con.cursor()
-        cur.execute(
-            """DELETE FROM admins WHERE chat_id = ? AND group_id = ?""", (chat_id, current_group_id)
-        )
+    with psycopg2.connect(**con_config()) as con:
+        with con.cursor() as cur:
+            cur.execute(
+                """DELETE FROM admins WHERE chat_id = %s AND group_id = %s""", (chat_id, current_group_id)
+            )
+            con.commit()
 
     # Remove you from the current group
     settings.current_group_id[chat_id] = None
@@ -219,18 +223,18 @@ def change_group_title_follow_up(update_obj: Update, context: CallbackContext) -
     group_id = settings.current_group_id[chat_id]
 
     # Updates the group title for the group
-    with sqlite3.connect('attendance.db') as con:
-        cur = con.cursor()
-        cur.execute(
-            """
-            UPDATE groups 
-               SET Name = ? 
-             WHERE id = ?
-            """, (group_name, group_id)
-        )
+    with psycopg2.connect(**con_config()) as con:
+        with con.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE groups 
+                   SET Name = %s 
+                 WHERE id = %s
+                """, (group_name, group_id)
+            )
 
-        # Saves changes
-        con.commit()
+            # Saves changes
+            con.commit()
 
     # Updates the group name
     settings.current_group_name[chat_id] = group_name
@@ -251,18 +255,18 @@ def uprank_follow_up(update_obj: Update, context: CallbackContext) -> int:
         return ConversationHandler.END
 
     # Updates the rank of the admin
-    with sqlite3.connect('attendance.db') as con:
-        cur = con.cursor()
-        cur.execute(
-            """
-            UPDATE admins
-               SET role = ? 
-             WHERE chat_id = ?""",
-            (user_rank, chat_id)
-        )
+    with psycopg2.connect(**con_config()) as con:
+        with con.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE admins
+                   SET role = %s 
+                 WHERE chat_id = %s""",
+                (user_rank, chat_id)
+            )
 
-        # Save changes
-        con.commit()
+            # Save changes
+            con.commit()
 
     update_obj.message.reply_text(f"Congratulations, you are now a {user_rank}!")
     return ConversationHandler.END
@@ -321,53 +325,53 @@ def merge_groups_follow_up(update_obj: Update, context: CallbackContext) -> int:
         all_groups = list(merge_group_storage.child_groups)
 
         # Update the sqlite database to reflect that the groups are merged
-        with sqlite3.connect('attendance.db') as con:
-            cur = con.cursor()
-            # This is a tuple that contains first, the parent id, and then all the group_ids
-            argument_tuple = tuple([parent_id] + all_groups)
-            if not join_all_groups:
-                # Add parent groups
-                cur.execute(
-                    f"""
-                    UPDATE groups
-                    SET parent_id = ? 
-                    WHERE id IN ({','.join(['?'] * len(all_groups))})
-                    """, argument_tuple
-                )
-            else:
-                # If we want to join all users, we need to update the group_id of all users, admins, attendance
-                # This is the list of all groups to
-                argument_tuple = tuple([parent_id, parent_id] + all_groups)
-                parent_group_size = get_group_size(parent_id)
+        with psycopg2.connect(**con_config()) as con:
+            with con.cursor() as cur:
+                # This is a tuple that contains first, the parent id, and then all the group_ids
+                argument_tuple = tuple([parent_id] + all_groups)
+                if not join_all_groups:
+                    # Add parent groups
+                    cur.execute(
+                        f"""
+                        UPDATE groups
+                        SET parent_id = %s 
+                        WHERE id IN ({','.join(['%s'] * len(all_groups))})
+                        """, argument_tuple
+                    )
+                else:
+                    # If we want to join all users, we need to update the group_id of all users, admins, attendance
+                    # This is the list of all groups to
+                    argument_tuple = tuple([parent_id, parent_id] + all_groups)
+                    parent_group_size = get_group_size(parent_id)
 
-                # For users, transfer over to new group
-                # cur.executemany()
-                cur.execute(
-                    f"""
-                    UPDATE users
-                    SET group_id = ?, 
-                    rank = (SELECT MAX(rank) FROM users WHERE group_id = ?) + 1,
-                    WHERE group_id IN ({','.join(['?'] * len(all_groups))})
-                    """, argument_tuple
-                )
-                # For admins - Delete the users
-                cur.execute(
-                    f"""
-                    DELETE FROM admins
-                    WHERE group_id IN ({','.join(['?'] * len(all_groups))})
-                    """, tuple(all_groups)
-                )
-                # For attendance, transfer over to new group
-                cur.execute(
-                    f"""
-                    UPDATE attendance
-                    SET group_id = ?
-                    WHERE group_id IN ({','.join(['?'] * len(all_groups))})
-                    """, argument_tuple
-                )
+                    # For users, transfer over to new group
+                    # cur.executemany()
+                    cur.execute(
+                        f"""
+                        UPDATE users
+                        SET group_id = %s, 
+                        rank = (SELECT MAX(rank) FROM users WHERE group_id = %s) + 1,
+                        WHERE group_id IN ({','.join(['%s'] * len(all_groups))})
+                        """, argument_tuple
+                    )
+                    # For admins - Delete the users
+                    cur.execute(
+                        f"""
+                        DELETE FROM admins
+                        WHERE group_id IN ({','.join(['%s'] * len(all_groups))})
+                        """, tuple(all_groups)
+                    )
+                    # For attendance, transfer over to new group
+                    cur.execute(
+                        f"""
+                        UPDATE attendance
+                        SET group_id = %s
+                        WHERE group_id IN ({','.join(['%s'] * len(all_groups))})
+                        """, argument_tuple
+                    )
 
-            # Save changes
-            con.commit()
+                # Save changes
+                con.commit()
 
         update_obj.message.reply_text("All groups have been merged")
         return ConversationHandler.END

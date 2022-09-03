@@ -1,7 +1,5 @@
 """Implementation of functions needed for attendance functions beyond the first one
 Responds to messages and stores the messages given """
-import sqlite3
-
 from telegram import Update
 from telegram.ext import CallbackContext, ConversationHandler
 import settings

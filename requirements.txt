@@ -1,5 +1,6 @@
 pip==21.3.1
 python-telegram-bot==13.13
+psycopg2==2.9.3
 certifi==2022.6.15
 pytz==2022.1
 tzdata==2022.1

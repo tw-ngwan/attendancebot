@@ -1,6 +1,7 @@
 // Table creation 
-CREATE TABLE groups (
-id               INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL, 
+Change the object types into dates and datetimes as well 
+CREATE TABLE IF NOT EXISTS groups (
+id                SERIAL PRIMARY KEY UNIQUE NOT NULL, 
 parent_id        INTEGER         , 
 Name                TEXT NOT NULL, 
 DateAdded           TEXT NOT NULL, 
@@ -12,19 +13,8 @@ AdminPassword       TEXT NOT NULL,
 FOREIGN KEY(parent_id) REFERENCES groups(id)
 );
 
-// Old implementation. See below for new 
-CREATE TABLE users (
-id       INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL, 
-group_id INTEGER NOT NULL, 
-Name        TEXT NOT NULL, 
-DateAdded   TEXT NOT NULL, 
-chat_id     TEXT         , 
-role        TEXT NOT NULL, 
-FOREIGN KEY(group_id) REFERENCES groups(id)
-);
-
-CREATE TABLE users (
-id       INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL, 
+CREATE TABLE IF NOT EXISTS users (
+id        SERIAL PRIMARY KEY UNIQUE NOT NULL, 
 group_id INTEGER NOT NULL, 
 Name        TEXT NOT NULL, 
 DateAdded   TEXT NOT NULL, 
@@ -32,8 +22,8 @@ rank     INTEGER NOT NULL,
 FOREIGN KEY(group_id) REFERENCES groups(id)
 );
 
-CREATE TABLE attendance (
-id            INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL, 
+CREATE TABLE IF NOT EXISTS attendance (
+id             SERIAL PRIMARY KEY UNIQUE NOT NULL, 
 group_id      INTEGER NOT NULL, 
 user_id       INTEGER NOT NULL, 
 TimePeriod    INTEGER NOT NULL, 
@@ -44,8 +34,8 @@ FOREIGN KEY(user_id) REFERENCES users(id),
 CONSTRAINT unq UNIQUE(group_id, user_id, TimePeriod, Date)
 ); 
 
-CREATE TABLE admins (
-id       INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL, 
+CREATE TABLE IF NOT EXISTS admins (
+id        SERIAL PRIMARY KEY UNIQUE NOT NULL, 
 group_id INTEGER NOT NULL, 
 DateAdded   TEXT NOT NULL, 
 chat_id     TEXT NOT NULL, 
@@ -60,13 +50,13 @@ INSERT INTO groups (
 parent_id, Name, DateAdded, GroupCode, 
 ObserverPassword, MemberPassword, AdminPassword
 ) 
-VALUES (?, ?, datetime('now'), ?, ?, ?, ?, ?)
+VALUES (?, ?, date('now'), ?, ?, ?, ?, ?)
 
 INSERT INTO groups (
 Name, DateAdded, GroupCode, 
 ObserverPassword, MemberPassword, AdminPassword
 )
-VALUES (?, datetime('now'), ?, ?, ?, ?, ?)
+VALUES (?, date('now'), ?, ?, ?, ?, ?)
 
 
 Name                TEXT NOT NULL, 

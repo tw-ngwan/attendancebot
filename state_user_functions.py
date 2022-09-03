@@ -5,7 +5,8 @@ from backend_implementations import get_admin_reply, get_intended_users, convert
     reply_non_admin
 from keyboards import group_name_keyboards
 import settings
-import sqlite3
+import psycopg2
+from data import con_config
 
 
 # Stores added user from add_users
@@ -20,18 +21,20 @@ def add_user_follow_up(update_obj: Update, context: CallbackContext) -> int:
         return ConversationHandler.END
 
     # Adds the user into the group otherwise
-    with sqlite3.connect('attendance.db') as con:
-        cur = con.cursor()
-        # Find current number of users, so that the group rank can be increased
-        group_size = get_group_size(current_group)
+    with psycopg2.connect(**con_config()) as con:
+        with con.cursor() as cur:
+            # Find current number of users, so that the group rank can be increased
+            group_size = get_group_size(current_group)
 
-        # Adds user
-        cur.execute(
-            """INSERT INTO users
-            (group_id, Name, DateAdded, rank)
-            VALUES (?, ?, datetime('now'), ?)
-            """, (current_group, name, group_size + 1)
-        )
+            # Adds user
+            cur.execute(
+                """INSERT INTO users
+                (group_id, Name, DateAdded, rank)
+                VALUES (%s, %s, CURRENT_DATE, %s)
+                """, (current_group, name, group_size + 1)
+            )
+
+            con.commit()
 
     update_obj.message.reply_text(f"Ok, {name} added")
     return settings.FIRST
@@ -72,23 +75,23 @@ def remove_user_follow_up(update_obj: Update, context: CallbackContext) -> int:
     user_ids = [(convert_rank_to_id(current_group, rank), ) for rank in users]
 
     # Now, we remove the users from all tables concerned (attendance, users)
-    with sqlite3.connect('attendance.db') as con:
-        cur = con.cursor()
-        cur.executemany(
-            """
-            DELETE FROM attendance
-            WHERE user_id = ?""",
-            user_ids
-        )
-        cur.executemany(
-            """
-            DELETE FROM users
-            WHERE id = ?""",
-            user_ids
-        )
+    with psycopg2.connect(**con_config()) as con:
+        with con.cursor() as cur:
+            cur.executemany(
+                """
+                DELETE FROM attendance
+                WHERE user_id = %s""",
+                user_ids
+            )
+            cur.executemany(
+                """
+                DELETE FROM users
+                WHERE id = %s""",
+                user_ids
+            )
 
-        # Save changes
-        con.commit()
+            # Save changes
+            con.commit()
 
     update_obj.message.reply_text("All users removed")
     return ConversationHandler.END
@@ -122,18 +125,18 @@ def edit_user_follow_up(update_obj: Update, context: CallbackContext) -> int:
     # Already have the names. So we combine them into a list of tuples where we can executemany
     ids_to_edit = [(names[i], convert_rank_to_id(current_group, users[i])) for i in range(len(users))]
 
-    with sqlite3.connect('attendance.db') as con:
-        cur = con.cursor()
-        # Update the table now
-        cur.executemany(
-            """
-            UPDATE users
-            SET name = ? 
-            WHERE id = ?""",
-            ids_to_edit
-        )
+    with psycopg2.connect(**con_config()) as con:
+        with con.cursor() as cur:
+            # Update the table now
+            cur.executemany(
+                """
+                UPDATE users
+                SET name = %s 
+                WHERE id = %s""",
+                ids_to_edit
+            )
 
-        con.commit()
+            con.commit()
 
     update_obj.message.reply_text("All edits done")
     return ConversationHandler.END
@@ -241,50 +244,50 @@ def change_user_group_follow_up(update_obj: Update, context: CallbackContext) ->
     # First, we get the group_size of the final group, so that we can assign the rank
     # Next, we add all users from the initial group to the final group
     # Finally, we change the ranks of the initial group to make it correct once again
-    with sqlite3.connect('attendance.db') as con:
-        cur = con.cursor()
+    with psycopg2.connect(**con_config()) as con:
+        with con.cursor() as cur:
 
-        # Get the group sizes
-        final_group_size = get_group_size(final_group)
-        initial_group_size = get_group_size(initial_group)
+            # Get the group sizes
+            final_group_size = get_group_size(final_group)
+            initial_group_size = get_group_size(initial_group)
 
-        # The list that is passed to the executemany to update the groups of the users
-        user_parameters = [(final_group, i + final_group_size + 1, user_ids[i]) for i in range(len(user_ids))]
-        print(user_parameters)
+            # The list that is passed to the executemany to update the groups of the users
+            user_parameters = [(final_group, i + final_group_size + 1, user_ids[i]) for i in range(len(user_ids))]
+            print(user_parameters)
 
-        # Updates the users table to change the groups of the users
-        cur.executemany(
-            """
-            UPDATE users
-               SET group_id = ?, rank = ?
-             WHERE id = ? 
-            """, user_parameters
-        )
-
-        # Now, updates the users table to change the ranks of the original users
-        initial_user_parameters = [(i, initial_group, i, initial_group) for i in range(initial_group_size, 0, -1)]
-        cur.executemany(
-            # Try and see if this can be cut down
-            """
-            UPDATE users
-               SET rank = ? 
-             WHERE id = (SELECT id 
-                           FROM users 
-                          WHERE group_id = ? 
-                            AND rank = (SELECT MIN(rank)
-                                           FROM users
-                                          WHERE rank >= ?
-                                            AND group_id = ?
-                            )
+            # Updates the users table to change the groups of the users
+            cur.executemany(
+                """
+                UPDATE users
+                   SET group_id = %s, rank = %s
+                 WHERE id = %s 
+                """, user_parameters
             )
-            """, initial_user_parameters
-            # Oops this thing doesn't work because it updates all ranks at once
-            # I need something that updates each inidividual rank one by one...
-            # This still does not work. Check how you can do individual
-        )
 
-        # Save changes
-        con.commit()
+            # Now, updates the users table to change the ranks of the original users
+            initial_user_parameters = [(i, initial_group, i, initial_group) for i in range(initial_group_size, 0, -1)]
+            cur.executemany(
+                # Try and see if this can be cut down
+                """
+                UPDATE users
+                   SET rank = %s 
+                 WHERE id = (SELECT id 
+                               FROM users 
+                              WHERE group_id = %s 
+                                AND rank = (SELECT MIN(rank)
+                                               FROM users
+                                              WHERE rank >= %s
+                                                AND group_id = %s
+                                )
+                )
+                """, initial_user_parameters
+                # # Oops this thing doesn't work because it updates all ranks at once
+                # # I need something that updates each inidividual rank one by one...
+                # # This still does not work. Check how you can do individual
+            )
+
+            # Save changes
+            con.commit()
 
     update_obj.message.reply_text("All users shifted")
     return ConversationHandler.END

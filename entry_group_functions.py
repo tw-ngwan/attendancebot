@@ -3,7 +3,8 @@ from telegram.ext import CallbackContext, ConversationHandler
 import settings
 from keyboards import yes_no_button_markup, group_name_keyboards
 from backend_implementations import verify_group_and_role, check_admin_privileges
-import sqlite3
+import psycopg2
+from data import con_config
 
 
 # Creates a group
@@ -128,20 +129,20 @@ def get_group_passwords(update_obj: Update, context: CallbackContext) -> int:
                                                            "authorised to perform any actions")]
 
     # Gets the passwords
-    with sqlite3.connect('attendance.db') as con:
-        cur = con.cursor()
-        cur.execute(
-            """
-            SELECT GroupCode, ObserverPassword, MemberPassword, AdminPassword
-              FROM groups
-             WHERE id = ?
-            """,
-            (current_group_id, )
-        )
-        passwords = cur.fetchall()
+    with psycopg2.connect(**con_config()) as con:
+        with con.cursor() as cur:
+            cur.execute(
+                """
+                SELECT GroupCode, ObserverPassword, MemberPassword, AdminPassword
+                  FROM groups
+                 WHERE id = %s
+                """,
+                (current_group_id, )
+            )
+            passwords = cur.fetchall()
 
     # The three passwords that are needed
-    group_code,observer, member, admin = passwords[0]
+    group_code, observer, member, admin = passwords[0]
     send_password_functions = [lambda x, y: x.message.reply_text(admin), lambda x, y: x.message.reply_text(member),
                                lambda x, y: x.message.reply_text(observer)]
 

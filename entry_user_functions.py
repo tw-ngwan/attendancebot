@@ -1,9 +1,10 @@
 from telegram import Update
 from telegram.ext import CallbackContext, ConversationHandler
 import settings
-import sqlite3
 from backend_implementations import verify_group_and_role
 from keyboards import yes_no_button_markup, group_name_keyboards
+import psycopg2
+from data import con_config
 
 
 # Adds a user to the bot
@@ -55,11 +56,12 @@ def get_users(update_obj: Update, context: CallbackContext) -> int:
         update_obj.message.reply_text("Enter a group first with /enter!")
         return ConversationHandler.END
     update_obj.message.reply_text("Ok, getting all users...")
-    with sqlite3.connect('attendance.db') as con:
-        current_group_id = settings.current_group_id[chat_id]
-        cur = con.cursor()
-        cur.execute("""SELECT Name FROM users WHERE group_id = ? ORDER BY rank""", (current_group_id, ))
-        names = [data[0] for data in cur.fetchall()]
+
+    with psycopg2.connect(**con_config()) as con:
+        with con.cursor() as cur:
+            current_group_id = settings.current_group_id[chat_id]
+            cur.execute("""SELECT Name FROM users WHERE group_id = %s ORDER BY rank""", (current_group_id, ))
+            names = [data[0] for data in cur.fetchall()]
 
     name_message = '\n'.join(["Members: "] + names)
     update_obj.message.reply_text(name_message)

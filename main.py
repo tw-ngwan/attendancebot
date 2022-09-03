@@ -53,6 +53,22 @@ from state_user_functions import add_user_follow_up, remove_user_verification, r
     edit_user_follow_up, change_group_ordering_follow_up, change_user_group_get_initial, change_user_group_get_final, \
     change_user_group_follow_up
 
+
+"""
+Major Issue: 
+All data is stored in the form of sqlite databases 
+Heroku does not support sqlite. 
+This means that you need to change everything from sqlite to PostGreSQL 
+
+Things to take note of: Data type for date, changing ? to %s
+
+PostGreSQL Docs: https://www.psycopg.org/psycopg3/docs/basic/params.html#query-parameters 
+https://www.postgresql.org/docs/current/datatype-datetime.html
+https://stackoverflow.com/questions/36454885/added-database-records-are-deleted-after-restarting-app-heroku-sqlalchemy
+
+AHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
+"""
+
 # Getting the API_KEY
 API_KEY = os.getenv("API_KEY_TELEGRAM")
 
