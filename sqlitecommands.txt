@@ -1,10 +1,10 @@
 // Table creation 
-Change the object types into dates and datetimes as well 
+
 CREATE TABLE IF NOT EXISTS groups (
 id                SERIAL PRIMARY KEY UNIQUE NOT NULL, 
 parent_id        INTEGER         , 
 Name                TEXT NOT NULL, 
-DateAdded           TEXT NOT NULL, 
+DateAdded           DATE NOT NULL, 
 NumDailyReports  INTEGER NOT NULL, 
 GroupCode           TEXT UNIQUE NOT NULL, 
 ObserverPassword    TEXT NOT NULL, 
@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS users (
 id        SERIAL PRIMARY KEY UNIQUE NOT NULL, 
 group_id INTEGER NOT NULL, 
 Name        TEXT NOT NULL, 
-DateAdded   TEXT NOT NULL, 
+DateAdded   DATE NOT NULL, 
 rank     INTEGER NOT NULL, 
 FOREIGN KEY(group_id) REFERENCES groups(id)
 );
@@ -27,7 +27,7 @@ id             SERIAL PRIMARY KEY UNIQUE NOT NULL,
 group_id      INTEGER NOT NULL, 
 user_id       INTEGER NOT NULL, 
 TimePeriod    INTEGER NOT NULL, 
-Date             TEXT NOT NULL, 
+Date             DATE NOT NULL, 
 AttendanceStatus TEXT NOT NULL, 
 FOREIGN KEY(group_id) REFERENCES groups(id), 
 FOREIGN KEY(user_id) REFERENCES users(id), 
@@ -37,7 +37,7 @@ CONSTRAINT unq UNIQUE(group_id, user_id, TimePeriod, Date)
 CREATE TABLE IF NOT EXISTS admins (
 id        SERIAL PRIMARY KEY UNIQUE NOT NULL, 
 group_id INTEGER NOT NULL, 
-DateAdded   TEXT NOT NULL, 
+DateAdded   DATE NOT NULL, 
 chat_id     TEXT NOT NULL, 
 role        TEXT NOT NULL, 
 FOREIGN KEY(group_id) REFERENCES groups(id)
@@ -50,13 +50,13 @@ INSERT INTO groups (
 parent_id, Name, DateAdded, GroupCode, 
 ObserverPassword, MemberPassword, AdminPassword
 ) 
-VALUES (?, ?, date('now'), ?, ?, ?, ?, ?)
+VALUES (?, ?, datetime('now'), ?, ?, ?, ?, ?)
 
 INSERT INTO groups (
 Name, DateAdded, GroupCode, 
 ObserverPassword, MemberPassword, AdminPassword
 )
-VALUES (?, date('now'), ?, ?, ?, ?, ?)
+VALUES (?, datetime('now'), ?, ?, ?, ?, ?)
 
 
 Name                TEXT NOT NULL, 

@@ -1,15 +1,10 @@
-"""Updates the attendance of each group daily
+"""This is an unnecessary file, left for code reference purposes """
 
-This file may not be necessary """
-
-from telegram import Update
-from telegram.ext import CallbackContext, ConversationHandler
-import sqlite3
-import settings
 import schedule
 from threading import Thread
 from time import sleep
-import datetime
+import psycopg2
+from data import con_config
 
 
 # Checks schedule and waits if not time to call function yet
@@ -27,38 +22,39 @@ def schedule_checker():
 def update_attendance():
 
     # First, we find all the groups that need attendance updated
-    with sqlite3.connect('attendance.db') as con:
-        cur = con.cursor()
-        cur.execute(
-            """
-            SELECT groups.id, groups.NumDailyReports, users.id
-              FROM groups
-              JOIN users
-                ON groups.id = users.group_id
-            """
-        )
-        user_groups = cur.fetchall()
+    with psycopg2.connect(**con_config()) as con:
+        with con.cursor() as cur:
+            cur.execute(
+                """
+                SELECT groups.id, groups.NumDailyReports, users.id
+                  FROM groups
+                  JOIN users
+                    ON groups.id = users.group_id
+                """
+            )
+            user_groups = cur.fetchall()
 
-        # Next, for each group, we update all the necessary attendances
-        for group in user_groups:
-            group_id, frequency, user_id = group
-            for i in range(frequency):
-                cur.execute(
-                    """
-                    INSERT INTO attendance
-                    (group_id, user_id, TimePeriod, Date, AttendanceStatus)
-                    VALUES 
-                    (?, ?, ?, date('now', '+7 day'), P)""",
-                    (group_id, user_id, i + 1)  # 1-indexed
-                )
+            # Next, for each group, we update all the necessary attendances
+            for group in user_groups:
+                group_id, frequency, user_id = group
+                for i in range(frequency):
+                    cur.execute(
+                        """
+                        INSERT INTO attendance
+                        (group_id, user_id, TimePeriod, Date, AttendanceStatus)
+                        VALUES 
+                        (%s, %s, %s, CURRENT_DATE + 7, P)""",
+                        (group_id, user_id, i + 1)  # 1-indexed
+                    )
 
+            con.commit()
 
 
 # I have no idea how to make this into a function that automatically runs update_attendance
 if __name__ == "__main__":
     schedule.every().day.at("00:00").do(update_attendance)
 
-    # Spin up a thread to run the schedule check so it doesn't block your bot.
+    # Spin up a thread to run the schedule check, so it doesn't block your bot.
     # This will take the function schedule_checker which will check every second
-    # to see if the scheduled job needs to be ran.
+    # to see if the scheduled job needs to be run.
     Thread(target=schedule_checker).start()

@@ -264,6 +264,16 @@ def change_user_group_follow_up(update_obj: Update, context: CallbackContext) ->
                 """, user_parameters
             )
 
+            attendance_user_parameters = [(final_group, user_ids[i]) for i in range(len(user_ids))]
+            # Updates the attendance table to change the groups of the users
+            cur.executemany(
+                """
+                UPDATE attendance 
+                   SET group_id = %s 
+                 WHERE user_id = %s
+                """, attendance_user_parameters
+            )
+
             # Now, updates the users table to change the ranks of the original users
             initial_user_parameters = [(i, initial_group, i, initial_group) for i in range(initial_group_size, 0, -1)]
             cur.executemany(

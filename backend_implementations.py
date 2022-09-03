@@ -53,7 +53,7 @@ def get_admin_groups(chat_id):
                   FROM admins
                   JOIN groups 
                     ON admins.group_id = groups.id 
-                 WHERE admins.chat_id = %s
+                 WHERE admins.chat_id = %s::TEXT
                 """,
                 (chat_id,)
             )
@@ -119,7 +119,7 @@ def check_admin_privileges(chat_id, group_id):
                 """
                 SELECT role 
                   FROM admins 
-                 WHERE chat_id = %s
+                 WHERE chat_id = %s::TEXT
                    AND group_id = %s
                 """,
                 (chat_id, group_id)
@@ -286,7 +286,7 @@ def get_group_attendance_backend(group_id: int, date: datetime.date = None):
                    AND attendance.user_id 
                     IN (
                         SELECT id FROM users WHERE group_id = %s
-                ) AS x
+                )
                 """,
                 (num_days_to_add, group_id)
             )
@@ -337,32 +337,68 @@ def get_group_attendance_backend(group_id: int, date: datetime.date = None):
                             # statuses of the days before, for the user and group in question.
                             # Afterwards, to get the latest date, we select those with zero different statuses compared
                             # with the previous days (starting from day 0), and select the latest date.
+                            # cur.execute(
+                            #     """
+                            #     SELECT AT.Date, AT.AttendanceStatus
+                            #       FROM attendance AT
+                            #      WHERE user_id = %s
+                            #        AND group_id = %s
+                            #        AND Date >= CURRENT_DATE + %s
+                            #        AND (
+                            #         SELECT COUNT(*) FROM attendance A
+                            #         WHERE A.AttendanceStatus <> AT.AttendanceStatus
+                            #         AND A.Date <= AT.Date
+                            #         AND A.Date >= CURRENT_DATE + %s
+                            #         AND A.user_id = AT.user_id
+                            #         AND A.group_id = AT.group_id
+                            #     ) = 0
+                            #     ORDER BY Date DESC
+                            #     LIMIT 1
+                            #     """,
+                            #     (num_days_to_add, all_members[i][0], group_id, num_days_to_add)
+                            # )
+                            # date_parameters = cur.fetchall()
+                            # print(date_parameters)
+                            # final_date, attendance_status = date_parameters[0]
+                            # # print(final_date, attendance_status)
+                            # final_date_representation = represent_date(final_date)
+                            # assert attendance_status == group_attendance_dict[all_members[i][0]][1][0]
+                            # attendance_message_body.append(''.join([str(i + 1), ') ', all_members[i][1], ' - ',
+                            #                                         attendance_status, ' till ',
+                            #                                         final_date_representation]))
+                            # attendance_status_dict[attendance_status] += 1
                             cur.execute(
                                 """
                                 SELECT Date, AttendanceStatus, (
                                     SELECT COUNT(*) FROM attendance A
-                                    WHERE A.AttendanceStatus <> AT.AttendanceStatus 
+                                    WHERE A.AttendanceStatus <> AT.AttendanceStatus
                                     AND A.Date <= AT.Date
-                                    AND A.Date >= date('now', %s)
-                                    AND A.user_id = AT.user_id 
-                                    AND A.group_id = AT.group_id 
-                                ) 
-                                AS RunGroup 
+                                    AND A.Date >= CURRENT_DATE + %s
+                                    AND A.user_id = AT.user_id
+                                    AND A.group_id = AT.group_id
+                                ) RunGroup
                                 FROM attendance AT
                                 WHERE user_id = %s
                                 AND group_id = %s
                                 AND Date >= CURRENT_DATE + %s
-                                AND RunGroup = 0
-                                ORDER BY Date DESC 
+                                AND (
+                                    SELECT COUNT(*) FROM attendance A
+                                    WHERE A.AttendanceStatus <> AT.AttendanceStatus
+                                    AND A.Date <= AT.Date
+                                    AND A.Date >= CURRENT_DATE + %s
+                                    AND A.user_id = AT.user_id
+                                    AND A.group_id = AT.group_id
+                                ) = 0
+                                ORDER BY Date DESC
                                 LIMIT 1
                                 """,
-                                (num_days_to_add, all_members[i][0], group_id, num_days_to_add)
+                                (num_days_to_add, all_members[i][0], group_id, num_days_to_add, num_days_to_add)
                             )
                             date_parameters = cur.fetchall()
                             print(date_parameters)
                             final_date, attendance_status, rungroup = date_parameters[0]
                             # print(final_date, attendance_status)
-                            final_date_representation = represent_date(final_date)
+                            final_date_representation = represent_date(final_date)  # To be resolved, this is datetime not text anymore
                             assert attendance_status == group_attendance_dict[all_members[i][0]][1][0]
                             attendance_message_body.append(''.join([str(i + 1), ') ', all_members[i][1], ' - ',
                                                                     attendance_status, ' till ',
@@ -466,6 +502,7 @@ def change_group_attendance_backend(update_obj: Update, context: CallbackContext
         # First, we check if this is the long attendance.
         entry[1] = entry[1].lower()
         if 'till' in entry[1]:
+            print('Till present')
             status, final_date = entry[1].split('till')
             status = status.strip()
             # Check that status is not blank
@@ -515,10 +552,11 @@ def change_group_attendance_backend(update_obj: Update, context: CallbackContext
                 # This implementation can potentially be improved
                 # Add functionality to only insert if the days are not weekends;
                 # this has to be done in Python not SQLite
-                attendances_to_update = [(current_group, user_id, j + 1, num_days_difference,
+                attendances_to_update = [(current_group, user_id, j + 1, num_days_difference + i,
                                           status[j], status[j]) for i in range(num_days) for j in range(len(status))
                                          if (day + datetime.timedelta(days=i)).weekday() <= 4]
-                # print(attendances_to_update)
+                print(attendances_to_update)
+                print(num_days)
 
                 # Inserts all the values into the table
                 # This needs to be edited, it should be updating values, not inserting values
@@ -532,6 +570,7 @@ def change_group_attendance_backend(update_obj: Update, context: CallbackContext
                     """,
                     attendances_to_update
                 )
+                print('Updated')
 
                 # Save changes
                 con.commit()
@@ -634,7 +673,12 @@ def get_single_user_attendance_backend(group_id: int, user_id: int, start_date: 
 
 
 # Represents date obtained from a SQLite server
-def represent_date(date_str: str) -> str:
+def represent_date(date_str) -> str:
+    # If the date is a datetime
+    if type(date_str) == datetime.date:
+        return date_str.strftime("%d%m%Y")
+
+    # If the date is a string
     year, month, day = date_str.split('-')
     year = year[2:]
     new_date = ''.join([day, month, year])
@@ -708,7 +752,7 @@ def get_group_id_from_button(message):
     # Ok I need a new implementation to be a little more robust. I will get the group code, and use it
     # to get the group_id and group_name
     message = message.strip()
-    group_code = -1
+    group_code = 'x'
     for i in range(len(message) - 2, -1, -1):
         if message[i] == '(':
             group_code = message[i + 1:len(message) - 1]
@@ -720,7 +764,7 @@ def get_group_id_from_button(message):
                 """
                 SELECT id, Name 
                 FROM groups 
-                WHERE GroupCode = %s""",
+                WHERE GroupCode = %s::TEXT""",
                 (group_code, )
             )
             groups = cur.fetchall()

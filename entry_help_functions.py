@@ -4,10 +4,11 @@
 from telegram import Update
 from telegram.ext import CallbackContext, ConversationHandler, Defaults
 import settings
-import sqlite3
 import datetime
 from dateutil import tz
 from backend_implementations import get_day_group_attendance
+import psycopg2
+from data import con_config
 
 
 """
@@ -91,16 +92,16 @@ def get_tomorrow_attendance(context: CallbackContext):
 def get_admin_groups(context: CallbackContext):
     chat_id = context.job.context
     # We use sqlite to get the groups that the user is in
-    with sqlite3.connect('attendance.db') as con:
-        cur = con.cursor()
-        cur.execute(
-            """
-            SELECT group_id 
-              FROM admins
-             WHERE chat_id = ?""", (chat_id, )
-        )
-        parsed_info = cur.fetchall()
-        group_ids = [group_id[0] for group_id in parsed_info]
+    with psycopg2.connect(**con_config()) as con:
+        with con.cursor() as cur:
+            cur.execute(
+                """
+                SELECT group_id 
+                  FROM admins
+                 WHERE chat_id = %s::TEXT""", (chat_id, )
+            )
+            parsed_info = cur.fetchall()
+            group_ids = [group_id[0] for group_id in parsed_info]
 
     print(group_ids)
     return group_ids

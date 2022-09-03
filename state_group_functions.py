@@ -35,13 +35,13 @@ def create_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
                 parent_id, Name, DateAdded, NumDailyReports, GroupCode, 
                 ObserverPassword, MemberPassword, AdminPassword
                 )
-                VALUES (%s, %s, date('now'), 2, %s, %s, %s, %s)
+                VALUES (%s, %s, CURRENT_DATE, 2, %s, %s, %s, %s)
                 """,
                 (current_group, title, group_code, observer_password, member_password, admin_password)
             )
 
             # Enter the group
-            cur.execute("""SELECT id FROM groups WHERE GroupCode = %s""", (group_code,))
+            cur.execute("""SELECT id FROM groups WHERE GroupCode = %s::TEXT""", (group_code,))
             group_to_enter = cur.fetchall()[0][0]
             print(group_to_enter)
             settings.current_group_id[chat_id] = group_to_enter
@@ -139,7 +139,7 @@ def join_group_get_group_code(update_obj: Update, context: CallbackContext) -> i
     # Check if the group code exists
     with psycopg2.connect(**con_config()) as con:
         with con.cursor() as cur:
-            cur.execute("""SELECT id, Name FROM groups WHERE GroupCode = %s""", (message.strip().upper(), ))
+            cur.execute("""SELECT id, Name FROM groups WHERE GroupCode = %s::TEXT""", (message.strip().upper(), ))
             group_details = cur.fetchall()
 
     if not group_details:
@@ -203,7 +203,7 @@ def quit_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
     with psycopg2.connect(**con_config()) as con:
         with con.cursor() as cur:
             cur.execute(
-                """DELETE FROM admins WHERE chat_id = %s AND group_id = %s""", (chat_id, current_group_id)
+                """DELETE FROM admins WHERE chat_id = %s::TEXT AND group_id = %s""", (chat_id, current_group_id)
             )
             con.commit()
 
@@ -261,7 +261,7 @@ def uprank_follow_up(update_obj: Update, context: CallbackContext) -> int:
                 """
                 UPDATE admins
                    SET role = %s 
-                 WHERE chat_id = %s""",
+                 WHERE chat_id = %s::TEXT""",
                 (user_rank, chat_id)
             )
 
