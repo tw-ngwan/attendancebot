@@ -4,7 +4,7 @@ import settings
 from backend_implementations import verify_group_and_role
 from keyboards import yes_no_button_markup, group_name_keyboards
 import psycopg2
-from data import con_config
+from data import DATABASE_URL
 
 
 # Adds a user to the bot
@@ -57,7 +57,7 @@ def get_users(update_obj: Update, context: CallbackContext) -> int:
         return ConversationHandler.END
     update_obj.message.reply_text("Ok, getting all users...")
 
-    with psycopg2.connect(**con_config()) as con:
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
             current_group_id = settings.current_group_id[chat_id]
             cur.execute("""SELECT Name FROM users WHERE group_id = %s ORDER BY rank""", (current_group_id, ))

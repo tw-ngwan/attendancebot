@@ -4,7 +4,7 @@ import schedule
 from threading import Thread
 from time import sleep
 import psycopg2
-from data import con_config
+from data import DATABASE_URL
 
 
 # Checks schedule and waits if not time to call function yet
@@ -22,7 +22,7 @@ def schedule_checker():
 def update_attendance():
 
     # First, we find all the groups that need attendance updated
-    with psycopg2.connect(**con_config()) as con:
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
             cur.execute(
                 """

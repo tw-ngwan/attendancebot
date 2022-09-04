@@ -10,3 +10,6 @@ def con_config(host="localhost", database="attendance", user="postgres") -> dict
         'password': os.getenv("POSTGRES_PASSWORD")
     }
     return config
+
+
+DATABASE_URL = os.getenv("DATABASE_URL")

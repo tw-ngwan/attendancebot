@@ -4,7 +4,7 @@ import settings
 from keyboards import yes_no_button_markup, group_name_keyboards
 from backend_implementations import verify_group_and_role, check_admin_privileges
 import psycopg2
-from data import con_config
+from data import DATABASE_URL
 
 
 # Creates a group
@@ -129,7 +129,7 @@ def get_group_passwords(update_obj: Update, context: CallbackContext) -> int:
                                                            "authorised to perform any actions")]
 
     # Gets the passwords
-    with psycopg2.connect(**con_config()) as con:
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
             cur.execute(
                 """

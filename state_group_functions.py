@@ -11,7 +11,7 @@ from keyboards import yes_no_button_markup, group_name_keyboards
 from backend_implementations import generate_random_password, generate_random_group_code, \
     get_admin_reply, rank_determination, get_group_id_from_button, check_admin_privileges, get_group_size
 import psycopg2
-from data import con_config
+from data import DATABASE_URL
 
 
 # Gets new group title
@@ -23,7 +23,7 @@ def create_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
         return ConversationHandler.END
 
     # SQLite Execution: To store the group and the new user
-    with psycopg2.connect(**con_config()) as con:
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
             current_group = settings.current_group_id[chat_id]
             group_code = generate_random_group_code()
@@ -106,7 +106,7 @@ def delete_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
         update_obj.message.reply_text("Ok, cancelling job now. ")
         return ConversationHandler.END
 
-    with psycopg2.connect(**con_config()) as con:
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
 
             # Delete from attendance first
@@ -137,7 +137,7 @@ def join_group_get_group_code(update_obj: Update, context: CallbackContext) -> i
     chat_id, message = get_admin_reply(update_obj, context)
 
     # Check if the group code exists
-    with psycopg2.connect(**con_config()) as con:
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
             cur.execute("""SELECT id, Name FROM groups WHERE GroupCode = %s::TEXT""", (message.strip().upper(), ))
             group_details = cur.fetchall()
@@ -166,7 +166,7 @@ def join_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
         return ConversationHandler.END
 
     # Adds the admin into the group
-    with psycopg2.connect(**con_config()) as con:
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
             cur.execute(
                 """
@@ -200,7 +200,7 @@ def quit_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
         return ConversationHandler.END
 
     # Deletes the user from the admins table
-    with psycopg2.connect(**con_config()) as con:
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
             cur.execute(
                 """DELETE FROM admins WHERE chat_id = %s::TEXT AND group_id = %s""", (chat_id, current_group_id)
@@ -223,7 +223,7 @@ def change_group_title_follow_up(update_obj: Update, context: CallbackContext) -
     group_id = settings.current_group_id[chat_id]
 
     # Updates the group title for the group
-    with psycopg2.connect(**con_config()) as con:
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
             cur.execute(
                 """
@@ -255,7 +255,7 @@ def uprank_follow_up(update_obj: Update, context: CallbackContext) -> int:
         return ConversationHandler.END
 
     # Updates the rank of the admin
-    with psycopg2.connect(**con_config()) as con:
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
             cur.execute(
                 """
@@ -325,7 +325,7 @@ def merge_groups_follow_up(update_obj: Update, context: CallbackContext) -> int:
         all_groups = list(merge_group_storage.child_groups)
 
         # Update the sqlite database to reflect that the groups are merged
-        with psycopg2.connect(**con_config()) as con:
+        with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
             with con.cursor() as cur:
                 # This is a tuple that contains first, the parent id, and then all the group_ids
                 argument_tuple = tuple([parent_id] + all_groups)

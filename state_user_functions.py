@@ -6,7 +6,7 @@ from backend_implementations import get_admin_reply, get_intended_users, convert
 from keyboards import group_name_keyboards
 import settings
 import psycopg2
-from data import con_config
+from data import DATABASE_URL
 
 
 # Stores added user from add_users
@@ -21,7 +21,7 @@ def add_user_follow_up(update_obj: Update, context: CallbackContext) -> int:
         return ConversationHandler.END
 
     # Adds the user into the group otherwise
-    with psycopg2.connect(**con_config()) as con:
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
             # Find current number of users, so that the group rank can be increased
             group_size = get_group_size(current_group)
@@ -75,7 +75,7 @@ def remove_user_follow_up(update_obj: Update, context: CallbackContext) -> int:
     user_ids = [(convert_rank_to_id(current_group, rank), ) for rank in users]
 
     # Now, we remove the users from all tables concerned (attendance, users)
-    with psycopg2.connect(**con_config()) as con:
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
             cur.executemany(
                 """
@@ -125,7 +125,7 @@ def edit_user_follow_up(update_obj: Update, context: CallbackContext) -> int:
     # Already have the names. So we combine them into a list of tuples where we can executemany
     ids_to_edit = [(names[i], convert_rank_to_id(current_group, users[i])) for i in range(len(users))]
 
-    with psycopg2.connect(**con_config()) as con:
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
             # Update the table now
             cur.executemany(
@@ -244,7 +244,7 @@ def change_user_group_follow_up(update_obj: Update, context: CallbackContext) ->
     # First, we get the group_size of the final group, so that we can assign the rank
     # Next, we add all users from the initial group to the final group
     # Finally, we change the ranks of the initial group to make it correct once again
-    with psycopg2.connect(**con_config()) as con:
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
 
             # Get the group sizes

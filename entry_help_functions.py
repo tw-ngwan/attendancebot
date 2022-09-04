@@ -8,7 +8,7 @@ import datetime
 from dateutil import tz
 from backend_implementations import get_day_group_attendance
 import psycopg2
-from data import con_config
+from data import DATABASE_URL
 
 
 """
@@ -92,7 +92,7 @@ def get_tomorrow_attendance(context: CallbackContext):
 def get_admin_groups(context: CallbackContext):
     chat_id = context.job.context
     # We use sqlite to get the groups that the user is in
-    with psycopg2.connect(**con_config()) as con:
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
             cur.execute(
                 """

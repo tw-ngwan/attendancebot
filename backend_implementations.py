@@ -9,7 +9,7 @@ import random
 import shelve
 import datetime
 import settings
-from data import con_config
+from data import DATABASE_URL
 import psycopg2
 
 
@@ -45,7 +45,7 @@ def get_admin_reply(update_obj: Update, context: CallbackContext):
 def get_admin_groups(chat_id):
     """Gets the groups that an admin is in.
     Returns a list of tuples: (group_name, group_id, role)"""
-    with psycopg2.connect(**con_config()) as con:
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
             cur.execute(
                 """
@@ -69,7 +69,7 @@ def get_admin_groups(chat_id):
 # Gets all the group members of a group
 def get_group_members(group_id):
     """Returns a list of tuples: (group_id, group_name)"""
-    with psycopg2.connect(**con_config()) as con:
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
             cur.execute(
                 """
@@ -113,7 +113,7 @@ def verify_group_and_role(update_obj: Update, context: CallbackContext, role: st
 def check_admin_privileges(chat_id, group_id):
     """Checks if a user is an admin, member, observer, or None.
     If admin, returns 0. If member, returns 1. If observer, returns 2. If none, returns 3"""
-    with psycopg2.connect(**con_config()) as con:
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
             cur.execute(
                 """
@@ -272,7 +272,7 @@ def get_group_attendance_backend(group_id: int, date: datetime.date = None):
     # date_message = f"{num_days_to_add} day"
 
     # Get the attendance of the non-present people for the day
-    with psycopg2.connect(**con_config()) as con:
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
 
             # Gets the attendance of the non-present people for the day
@@ -541,7 +541,7 @@ def change_group_attendance_backend(update_obj: Update, context: CallbackContext
 
         # This updates the user's attendance for all
         # Update the attendance of the user
-        with psycopg2.connect(**con_config()) as con:
+        with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
             with con.cursor() as cur:
                 # Gets the values of all
                 status = [value.strip().upper() for value in status.split('/')]
@@ -596,7 +596,7 @@ def parse_user_change_instructions(message: str):
 # If don't have, will assume that get attendance of the past month
 def get_single_user_attendance_backend(group_id: int, user_id: int, start_date: datetime.date, end_date: datetime.date):
 
-    with psycopg2.connect(**con_config()) as con:
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
             cur.execute(
                 """
@@ -705,7 +705,7 @@ def get_intended_users(user_string: str, group_id: int=None):
 
 # Converts user rank into user_id, and verifies that it exists
 def convert_rank_to_id(group_id, user_rank) -> int:
-    with psycopg2.connect(**con_config()) as con:
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
             cur.execute(
                 """SELECT id FROM users WHERE group_id = %s AND rank = %s""", (group_id, user_rank)
@@ -722,7 +722,7 @@ def rank_determination(password: str, group_id: int) -> int:
     """Returns the rank that the user is, and false else"""
 
     # Check for the passwords of the group
-    with psycopg2.connect(**con_config()) as con:
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
             cur.execute("""SELECT AdminPassword, MemberPassword, ObserverPassword FROM groups WHERE id = %s""",
                         (group_id, ))
@@ -758,7 +758,7 @@ def get_group_id_from_button(message):
             group_code = message[i + 1:len(message) - 1]
             break
 
-    with psycopg2.connect(**con_config()) as con:
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
             cur.execute(
                 """
@@ -807,7 +807,7 @@ def swap_users(a, b, group_id):
         group_size = get_group_size(group_id)
 
         var = a if a > b else b  # This gets the actual group that is to be swapped (since the group > -1)
-        with psycopg2.connect(**con_config()) as con:
+        with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
             with con.cursor() as cur:
                 # This does the swapping
                 cur.execute(
@@ -826,7 +826,7 @@ def swap_users(a, b, group_id):
     if a == 0 or b == 0:
         var = a if a > b else b  # This gets actual group, see above
         # This does the swapping
-        with psycopg2.connect(**con_config()) as con:
+        with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
             with con.cursor() as cur:
                 cur.execute(
                     """
@@ -842,7 +842,7 @@ def swap_users(a, b, group_id):
         return None
 
     # Now, we just swap values
-    with psycopg2.connect(**con_config()) as con:
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
             cur.execute(
                 """
@@ -861,7 +861,7 @@ def swap_users(a, b, group_id):
 
 # Gets the group size of a group
 def get_group_size(group_id):
-    with psycopg2.connect(**con_config()) as con:
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
             cur.execute("""SELECT COUNT(*) FROM users WHERE group_id = %s""", (group_id,))
             group_size = cur.fetchall()
@@ -874,7 +874,7 @@ def get_group_size(group_id):
 
 # Get the child groups of a group
 def get_child_groups(group_id):
-    with psycopg2.connect(**con_config()) as con:
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
             cur.execute(
                 """
