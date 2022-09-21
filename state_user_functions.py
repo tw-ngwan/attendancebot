@@ -90,6 +90,29 @@ def remove_user_follow_up(update_obj: Update, context: CallbackContext) -> int:
                 user_ids
             )
 
+            # In a REALLY bad move, this code is copied/duplicated from change_user_group
+            current_group_size = get_group_size(current_group)
+
+            # Now, updates the users table to change the ranks of the original users
+            initial_user_parameters = [(i, current_group, i, current_group) for i in
+                                       range(current_group_size, 0, -1)]
+            cur.executemany(
+                # Try and see if this can be cut down
+                """
+                UPDATE users
+                   SET rank = %s 
+                 WHERE id = (SELECT id 
+                               FROM users 
+                              WHERE group_id = %s 
+                                AND rank = (SELECT MIN(rank)
+                                               FROM users
+                                              WHERE rank >= %s
+                                                AND group_id = %s
+                                )
+                )
+                """, initial_user_parameters
+            )
+
             # Save changes
             con.commit()
 
