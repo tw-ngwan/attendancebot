@@ -699,8 +699,9 @@ def get_intended_users(user_string: str, group_id: int=None):
     if group_id is not None:
         group_size = get_group_size(group_id)
 
+    # Using this instead to account for the case where there are no users
     # We check that all the users are valid with this condition: If valid, return users, else, return False.
-    return users if min([(1 <= user <= group_size) and type(user) == int for user in users]) else False
+    return users if min([(1 <= user <= group_size) and type(user) == int for user in users], default=1) else False
 
 
 # Converts user rank into user_id, and verifies that it exists
@@ -794,9 +795,10 @@ def get_intended_user_swap_pairs(message, group_id=None):
     if group_id is not None:
         group_size = get_group_size(group_id)
 
+    # Using this to account for the case where there are no users
     # We check that each pair is valid, comprise different numbers, and is constrained by the group size.
     return int_pairs if min([(-1 <= user <= group_size) and type(user) == int and len(pair) == 2 and len(set(pair)) != 1
-                             for pair in int_pairs for user in pair]) else False
+                             for pair in int_pairs for user in pair], default=1) else False
 
 
 # Swaps pairs of users. For change_group_ordering_follow_up
