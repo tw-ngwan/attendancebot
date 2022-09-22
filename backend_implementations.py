@@ -210,7 +210,7 @@ def get_day_group_attendance(context: CallbackContext, day: datetime.date, curre
     attendance_message_beginning = [f"*Attendance for {date_string}:*", ""]
 
     attendance_message_body, attendance_status_dict = get_day_group_attendance_message_recursive(
-        day=day, group_id=current_group_id, attendance_message_body=[], attendance_status_dict={}
+        day=day, group_id=current_group_id, attendance_message_body=[], attendance_status_dict={'P': 0}  # Key error
     )
 
     # We return the dictionary instead of the message, so that we can concatenate multiple dicts together
@@ -236,6 +236,7 @@ def get_day_group_attendance_message_recursive(day: datetime.date, group_id: int
     attendance_message_body += current_attendance_message_body
     attendance_message_body.append('')
 
+    attendance_status_dict['P'] = 0
     # Updating attendance_status_dict to include this new group
     for key in current_attendance_status_dict:
         attendance_status_dict.setdefault(key, 0)
