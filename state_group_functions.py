@@ -389,6 +389,7 @@ def merge_groups_follow_up(update_obj: Update, context: CallbackContext) -> int:
 
     # Check that group added is not parent group: This prevents loop from forming
     group_superparent = get_superparent_group(group_id)
+    print("Parents:", group_superparent, merge_group_storage.superparent)
     if group_superparent == merge_group_storage.superparent:
         update_obj.message.reply_text("Group added cannot be parent group!", reply_markup=group_button_markup)
         return settings.THIRD
