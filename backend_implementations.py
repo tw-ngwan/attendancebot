@@ -27,11 +27,12 @@ def generate_random_group_code() -> str:
     # I have a database of 100,000 group codes stored in a database (shelve), along with the current_group_number
     # Whenever a new group is created, the next group code in line will be used, to ensure that it remains unique.
     # Thus, this allows for O(1) lookup and generation of the group code
-    with shelve.open('groups.db') as s:
-        group_code = s['group_codes'][s['current_group']]
-        s['current_group'] += 1
-        s.sync()
-    return group_code
+    return ''.join([random.choice(''.join([ascii_uppercase])) for _ in range(8)])
+    # with shelve.open('groups.db') as s:
+    #     group_code = s['group_codes'][s['current_group']]
+    #     s['current_group'] += 1
+    #     s.sync()
+    # return group_code
 
 
 # Gets the user's reply
