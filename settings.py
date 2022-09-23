@@ -1,5 +1,6 @@
 """File that only contains the state variables"""
 from collections import defaultdict
+from backend_implementations import get_superparent_group
 current_group_id = defaultdict(lambda: None)
 current_group_name = defaultdict(lambda: None)
 attendance_date_edit = {}  # For change_any_day_attendance_get_day in state_attendance_functions
@@ -14,6 +15,7 @@ class MergeGroupStorage:
 
     def __init__(self, parent):
         self.parent = parent
+        self.superparent = get_superparent_group(parent)
         self.join_all_groups = False
         self.child_groups = set()
 

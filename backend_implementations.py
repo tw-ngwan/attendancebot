@@ -891,3 +891,22 @@ def get_child_groups(group_id):
             group_ids = [val[0] for val in parsed_message]
 
     return group_ids
+
+
+# Gets the superparent group of a group (disjoint set data structure implementation)
+# This is used in create_group to ensure that no loops are formed in a tree: If two groups belong to two
+# superparent groups, then no loop will be formed
+def get_superparent_group(group_id):
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
+        with con.cursor() as cur:
+            while group_id is not None:
+                cur.execute(
+                    """
+                    SELECT parent_id
+                      FROM groups 
+                     WHERE id = %s""", (group_id,)
+                )
+                parent_id = cur.fetchall()
+                group_id = parent_id[0][0] if parent_id is not None else group_id
+    return group_id
+

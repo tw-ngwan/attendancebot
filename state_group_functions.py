@@ -9,7 +9,8 @@ from telegram.ext import ConversationHandler
 import settings
 from keyboards import yes_no_button_markup, group_name_keyboards
 from backend_implementations import generate_random_password, generate_random_group_code, \
-    get_admin_reply, rank_determination, get_group_id_from_button, check_admin_privileges, get_group_size
+    get_admin_reply, rank_determination, get_group_id_from_button, check_admin_privileges, get_group_size, \
+    get_superparent_group
 import psycopg2
 from data import DATABASE_URL
 
@@ -322,6 +323,7 @@ def merge_groups_follow_up(update_obj: Update, context: CallbackContext) -> int:
         join_all_groups = merge_group_storage.join_all_groups
 
         # Get all child groups. Ok one problem: Make sure that the parent group is not in the child_groups
+        # One more problem: Make sure one of the child groups is not the parent of the parent group
         all_groups = list(merge_group_storage.child_groups)
 
         # Update the sqlite database to reflect that the groups are merged
@@ -385,8 +387,9 @@ def merge_groups_follow_up(update_obj: Update, context: CallbackContext) -> int:
                                       reply_markup=group_button_markup)
         return settings.THIRD
 
-    # Check that group added is not parent group
-    if group_id == merge_group_storage.parent:
+    # Check that group added is not parent group: This prevents loop from forming
+    group_superparent = get_superparent_group(group_id)
+    if group_superparent == merge_group_storage.superparent:
         update_obj.message.reply_text("Group added cannot be parent group!", reply_markup=group_button_markup)
         return settings.THIRD
 
