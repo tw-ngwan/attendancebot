@@ -84,7 +84,7 @@ def remove_user_follow_up(update_obj: Update, context: CallbackContext) -> int:
                 """
                 SELECT rank 
                   FROM users 
-                 WHERE user_id = ANY(%s)""",
+                 WHERE id = ANY(%s)""",
                 (user_ids_for_parsing,)
             )
             ranks = cur.fetchall()
