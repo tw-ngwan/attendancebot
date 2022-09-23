@@ -365,7 +365,7 @@ def change_user_group_follow_up(update_obj: Update, context: CallbackContext) ->
             #     # # Oops this thing doesn't work because it updates all ranks at once
             #     # # I need something that updates each individual rank one by one...
             #     # # This still does not work. Check how you can do individual
-            )
+            # )
 
             # Save changes
             con.commit()

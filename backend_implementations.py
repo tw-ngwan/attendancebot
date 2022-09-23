@@ -30,6 +30,7 @@ def generate_random_group_code() -> str:
     with shelve.open('groups.db') as s:
         group_code = s['group_codes'][s['current_group']]
         s['current_group'] += 1
+        s.sync()
     return group_code
 
 
