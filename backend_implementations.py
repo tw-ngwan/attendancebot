@@ -907,6 +907,7 @@ def get_superparent_group(group_id):
                      WHERE id = %s""", (group_id,)
                 )
                 parent_id = cur.fetchall()
-                group_id = parent_id[0][0] if parent_id is not None else group_id
+                print(parent_id)
+                group_id = parent_id[0][0] if parent_id else group_id
     return group_id
 
