@@ -73,10 +73,22 @@ def remove_user_follow_up(update_obj: Update, context: CallbackContext) -> int:
         return ConversationHandler.END
 
     user_ids = [(convert_rank_to_id(current_group, rank), ) for rank in users]
+    user_ids_for_parsing = [user_id[0] for user_id in user_ids]
+    print(user_ids_for_parsing)
 
     # Now, we remove the users from all tables concerned (attendance, users)
     with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
+            # First, we get the ranks of the deleted users
+            cur.execute(
+                """
+                SELECT rank 
+                  FROM users 
+                 WHERE user_id = ANY(%s)""",
+                (user_ids_for_parsing,)
+            )
+            ranks = cur.fetchall()
+            ranks.sort()
             cur.executemany(
                 """
                 DELETE FROM attendance
@@ -90,28 +102,41 @@ def remove_user_follow_up(update_obj: Update, context: CallbackContext) -> int:
                 user_ids
             )
 
-            # In a REALLY bad move, this code is copied/duplicated from change_user_group
-            current_group_size = get_group_size(current_group)
-
-            # Now, updates the users table to change the ranks of the original users
-            initial_user_parameters = [(i, current_group, i, current_group) for i in
-                                       range(current_group_size, 0, -1)]
+            ranks_to_update = [(current_group, rank) for rank in ranks]
+            # Updating original ranks
             cur.executemany(
-                # Try and see if this can be cut down
                 """
-                UPDATE users
-                   SET rank = %s 
-                 WHERE id = (SELECT id 
-                               FROM users 
-                              WHERE group_id = %s 
-                                AND rank = (SELECT MIN(rank)
-                                               FROM users
-                                              WHERE rank >= %s
-                                                AND group_id = %s
-                                )
-                )
-                """, initial_user_parameters
+                UPDATE users 
+                   SET rank = rank - 1
+                 WHERE group_id = %s 
+                   AND rank > %s""",
+                ranks_to_update
             )
+
+            # # In a REALLY bad move, this code is copied/duplicated from change_user_group
+            # current_group_size = get_group_size(current_group)
+            # print(current_group_size)
+            #
+            # # Now, updates the users table to change the ranks of the original users
+            # initial_user_parameters = [(i, current_group, i, current_group) for i in
+            #                            range(current_group_size, 0, -1)]
+            # print(initial_user_parameters)
+            # cur.executemany(
+            #     # Try and see if this can be cut down
+            #     """
+            #     UPDATE users
+            #        SET rank = %s
+            #      WHERE id = (SELECT id
+            #                    FROM users
+            #                   WHERE group_id = %s
+            #                     AND rank = (SELECT MIN(rank)
+            #                                    FROM users
+            #                                   WHERE rank >= %s
+            #                                     AND group_id = %s
+            #                     )
+            #     )
+            #     """, initial_user_parameters
+            # )
 
             # Save changes
             con.commit()
@@ -298,6 +323,7 @@ def change_user_group_follow_up(update_obj: Update, context: CallbackContext) ->
             )
 
             # Now, updates the users table to change the ranks of the original users
+            initial_group_size = get_group_size(initial_group)
             initial_user_parameters = [(i, initial_group, i, initial_group) for i in range(initial_group_size, 0, -1)]
             cur.executemany(
                 # Try and see if this can be cut down
@@ -315,7 +341,7 @@ def change_user_group_follow_up(update_obj: Update, context: CallbackContext) ->
                 )
                 """, initial_user_parameters
                 # # Oops this thing doesn't work because it updates all ranks at once
-                # # I need something that updates each inidividual rank one by one...
+                # # I need something that updates each individual rank one by one...
                 # # This still does not work. Check how you can do individual
             )
 
