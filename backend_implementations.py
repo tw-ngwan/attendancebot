@@ -899,7 +899,7 @@ def get_child_groups(group_id):
 def get_superparent_group(group_id):
     with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
-            while group_id is not None:
+            while True:
                 cur.execute(
                     """
                     SELECT parent_id
@@ -908,6 +908,7 @@ def get_superparent_group(group_id):
                 )
                 parent_id = cur.fetchall()[0][0]
                 print(parent_id)
-                group_id = parent_id if parent_id else group_id
-    return group_id
+                if parent_id is None:
+                    return group_id
+                group_id = parent_id
 
