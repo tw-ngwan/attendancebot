@@ -303,6 +303,17 @@ def change_user_group_follow_up(update_obj: Update, context: CallbackContext) ->
             user_parameters = [(final_group, i + final_group_size + 1, user_ids[i]) for i in range(len(user_ids))]
             print(user_parameters)
 
+            # Get the ranks of the initial users
+            cur.execute(
+                """
+                SELECT rank 
+                FROM users 
+                WHERE id = ANY(%s)""",
+                (user_ids,)
+            )
+            ranks = cur.fetchall()
+            ranks.sort(reverse=True)
+
             # Updates the users table to change the groups of the users
             cur.executemany(
                 """
@@ -322,27 +333,38 @@ def change_user_group_follow_up(update_obj: Update, context: CallbackContext) ->
                 """, attendance_user_parameters
             )
 
-            # Now, updates the users table to change the ranks of the original users
-            initial_group_size = get_group_size(initial_group)
-            initial_user_parameters = [(i, initial_group, i, initial_group) for i in range(initial_group_size, 0, -1)]
+            ranks_to_update = [(initial_group, rank) for rank in ranks]
+            # Updating original ranks
             cur.executemany(
-                # Try and see if this can be cut down
                 """
-                UPDATE users
-                   SET rank = %s 
-                 WHERE id = (SELECT id 
-                               FROM users 
-                              WHERE group_id = %s 
-                                AND rank = (SELECT MIN(rank)
-                                               FROM users
-                                              WHERE rank >= %s
-                                                AND group_id = %s
-                                )
-                )
-                """, initial_user_parameters
-                # # Oops this thing doesn't work because it updates all ranks at once
-                # # I need something that updates each individual rank one by one...
-                # # This still does not work. Check how you can do individual
+                UPDATE users 
+                   SET rank = rank - 1
+                 WHERE group_id = %s 
+                   AND rank > %s""",
+                ranks_to_update
+            )
+
+            # # Now, updates the users table to change the ranks of the original users
+            # initial_group_size = get_group_size(initial_group)
+            # initial_user_parameters = [(i, initial_group, i, initial_group) for i in range(initial_group_size, 0, -1)]
+            # cur.executemany(
+            #     # Try and see if this can be cut down
+            #     """
+            #     UPDATE users
+            #        SET rank = %s
+            #      WHERE id = (SELECT id
+            #                    FROM users
+            #                   WHERE group_id = %s
+            #                     AND rank = (SELECT MIN(rank)
+            #                                    FROM users
+            #                                   WHERE rank >= %s
+            #                                     AND group_id = %s
+            #                     )
+            #     )
+            #     """, initial_user_parameters
+            #     # # Oops this thing doesn't work because it updates all ranks at once
+            #     # # I need something that updates each individual rank one by one...
+            #     # # This still does not work. Check how you can do individual
             )
 
             # Save changes
