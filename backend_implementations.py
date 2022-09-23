@@ -906,8 +906,8 @@ def get_superparent_group(group_id):
                       FROM groups 
                      WHERE id = %s""", (group_id,)
                 )
-                parent_id = cur.fetchall()
+                parent_id = cur.fetchall()[0][0]
                 print(parent_id)
-                group_id = parent_id[0][0] if parent_id else group_id
+                group_id = parent_id if parent_id else group_id
     return group_id
 
