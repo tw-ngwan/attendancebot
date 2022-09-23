@@ -285,7 +285,7 @@ def merge_groups_check_super_group(update_obj: Update, context: CallbackContext)
     if check_admin_privileges(chat_id, parent_id) > 0:
         update_obj.message.reply_text("You need to be an admin of the parent group to merge!")
         return ConversationHandler.END
-    settings.merge_group_storage[chat_id] = settings.MergeGroupStorage(parent_id)
+    settings.merge_group_storage[chat_id] = settings.MergeGroupStorage(parent_id, get_superparent_group(parent_id))
     update_obj.message.reply_text("Do you want to join all users into a super group? That is, all users become united "
                                   "into one group, rather than remain in their own groups under this new parent group.",
                                   reply_markup=yes_no_button_markup)
