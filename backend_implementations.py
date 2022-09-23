@@ -238,7 +238,7 @@ def get_day_group_attendance_message_recursive(day: datetime.date, group_id: int
     attendance_message_body += current_attendance_message_body
     attendance_message_body.append('')
 
-    attendance_status_dict['P'] = 0
+    # attendance_status_dict['P'] = 0
     # Updating attendance_status_dict to include this new group
     for key in current_attendance_status_dict:
         attendance_status_dict.setdefault(key, 0)
