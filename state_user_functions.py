@@ -88,7 +88,7 @@ def remove_user_follow_up(update_obj: Update, context: CallbackContext) -> int:
                 (user_ids_for_parsing,)
             )
             ranks = cur.fetchall()
-            ranks.sort()
+            ranks.sort(reverse=True)
             cur.executemany(
                 """
                 DELETE FROM attendance
