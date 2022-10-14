@@ -3,7 +3,7 @@ from telegram.ext import CallbackContext, ConversationHandler
 from backend_implementations import get_admin_reply, get_intended_users, convert_rank_to_id, \
     get_intended_user_swap_pairs, swap_users, get_group_id_from_button, get_group_size, check_admin_privileges, \
     reply_non_admin
-from keyboards import group_name_keyboards
+from keyboards import group_name_keyboards, ReplyKeyboardRemove
 import settings
 import psycopg2
 from data import DATABASE_URL
@@ -216,7 +216,7 @@ def change_user_group_get_initial(update_obj: Update, context: CallbackContext) 
     # Tests that the group id is valid (or that OK is not entered)
     group_id, group_name = get_group_id_from_button(group_message)
     if not group_id:
-        update_obj.message.reply_text("Ok, cancelling job now")
+        context.bot.send_message(chat_id, "Ok, cancelling job now", reply_markup=ReplyKeyboardRemove())
         return ConversationHandler.END
 
     # Check that the user has the right privileges
@@ -242,7 +242,7 @@ def change_user_group_get_final(update_obj: Update, context: CallbackContext) ->
     # Tests that the group id is valid (or that OK is not entered)
     group_id, group_name = get_group_id_from_button(group_message)
     if not group_id:
-        update_obj.message.reply_text("Ok, cancelling job now")
+        context.bot.send_message(chat_id, "Ok, cancelling job now", reply_markup=ReplyKeyboardRemove())
         return ConversationHandler.END
 
     # Check that the user has the right privileges
@@ -253,7 +253,8 @@ def change_user_group_get_final(update_obj: Update, context: CallbackContext) ->
 
     # Stores the final group id, and checks that it is not the same as the initial group
     if group_id == settings.change_user_group_storage[chat_id].initial_group:
-        update_obj.message.reply_text("Initial and final group cannot be the same!")
+        context.bot.send_message(chat_id, "Initial and final group cannot be the same!",
+                                 reply_markup=ReplyKeyboardRemove())
         return ConversationHandler.END
     settings.change_user_group_storage[chat_id].final_group = group_id
 
@@ -273,14 +274,14 @@ def change_user_group_follow_up(update_obj: Update, context: CallbackContext) ->
 
     # Check that the user wants to proceed with the job first
     if message.strip().lower() == 'yes':
-        update_obj.message.reply_text("Ok, cancelling job now")
+        context.bot.send_message(chat_id, "Ok, cancelling job now", reply_markup=ReplyKeyboardRemove())
         return ConversationHandler.END
 
     # Check that the user input is valid, and get the list of users that he wants
     # Keeps the order in which users were inputted
     users = get_intended_users(message, initial_group)
     if not users:
-        update_obj.message.reply_text("Users not entered correctly!")
+        context.bot.send_message(chat_id, "Users not entered correctly!", reply_markup=ReplyKeyboardRemove())
         return ConversationHandler.END
 
     # Preserve order
@@ -370,5 +371,5 @@ def change_user_group_follow_up(update_obj: Update, context: CallbackContext) ->
             # Save changes
             con.commit()
 
-    update_obj.message.reply_text("All users shifted")
+    context.bot.send_message(chat_id, "All users shifted", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
