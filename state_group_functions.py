@@ -209,7 +209,7 @@ def set_username(update_obj: Update, context: CallbackContext) -> int:
                 """
                 UPDATE admins 
                    SET username = %s
-                 WHERE chat_id = %s""",
+                 WHERE chat_id = %s::TEXT""",
                 (username, chat_id)
             )
 
