@@ -26,19 +26,19 @@ def create_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
     # SQLite Execution: To store the group and the new user
     with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
-            current_group = settings.current_group_id[chat_id]
+            # current_group = settings.current_group_id[chat_id]
             group_code = generate_random_group_code()
             observer_password, member_password, admin_password = generate_random_password(iterations=3)
             # Stores the group in SQLite. current_group can be None
             cur.execute(
                 """
                 INSERT INTO groups (
-                parent_id, Name, DateAdded, NumDailyReports, GroupCode, 
+                Name, DateAdded, NumDailyReports, GroupCode, 
                 ObserverPassword, MemberPassword, AdminPassword
                 )
-                VALUES (%s, %s, CURRENT_DATE, 2, %s, %s, %s, %s)
+                VALUES (%s, CURRENT_DATE, 2, %s, %s, %s, %s)
                 """,
-                (current_group, title, group_code, observer_password, member_password, admin_password)
+                (title, group_code, observer_password, member_password, admin_password)
             )
 
             # Enter the group
