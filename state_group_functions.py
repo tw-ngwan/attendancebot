@@ -191,6 +191,8 @@ def join_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
     settings.current_group_id[chat_id] = group_id
     settings.current_group_name[chat_id] = group_name
 
+    update_admin_movements(chat_id, group_id=group_id, function='/joingroup', admin_text=str(user_rank))
+
     update_obj.message.reply_text(f"Congratulations, you are now a {user_rank} "
                                   f"of {settings.current_group_name[chat_id]}! Let's set your username now. "
                                   f"Type your username into the chat now!")
@@ -301,6 +303,8 @@ def uprank_follow_up(update_obj: Update, context: CallbackContext) -> int:
 
             # Save changes
             con.commit()
+
+    update_admin_movements(chat_id, group_id=group_id, function='/uprank', admin_text=str(user_rank))
 
     update_obj.message.reply_text(f"Congratulations, you are now a {user_rank}!")
     return ConversationHandler.END
