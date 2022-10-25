@@ -63,12 +63,13 @@ def create_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
             con.commit()
 
     update_obj.message.reply_text(f"Ok, your group will be named {title}")
-    update_obj.message.reply_text(f"This is your group code: {group_code}. The following 3 messages are the "
+    update_obj.message.reply_text(f"The following 4 messages are your group code,"
                                   f"observer password, member password, and admin password respectively. "
                                   f"Keep the passwords safe, as they will allow any user to join and gain access to "
                                   f"sensitive info in your group!\n"
                                   f"To add a new member to your group, get them to use /joingroup and type "
                                   f"the group code.")
+    update_obj.message.reply_text(group_code)
     update_obj.message.reply_text(observer_password)
     update_obj.message.reply_text(member_password)
     update_obj.message.reply_text(admin_password)
@@ -107,7 +108,7 @@ def delete_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
 
     # Verify that user really wants to proceed with action
     if message.strip().lower() != "yes":
-        update_obj.message.reply_text("Ok, cancelling job now. ")
+        update_obj.message.reply_text("Ok, cancelling job now. ", reply_markup=ReplyKeyboardRemove())
         return ConversationHandler.END
 
     with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
@@ -117,6 +118,16 @@ def delete_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
             cur.execute("""DELETE FROM attendance WHERE group_id = %s""", (current_group_id, ))
             # Delete from users
             cur.execute("""DELETE FROM users WHERE group_id = %s""", (current_group_id, ))
+            # Delete from admin_movements
+            cur.execute(
+                """
+                DELETE FROM admin_movements 
+                WHERE admin_id IN (
+                    SELECT id 
+                      FROM admins 
+                     WHERE group_id = %s
+                """, (current_group_id, )
+            )
             # Delete from admins
             cur.execute("""DELETE FROM admins WHERE group_id = %s""", (current_group_id, ))
             # Set its child groups to have no parent
@@ -134,7 +145,7 @@ def delete_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
     settings.current_group_id[chat_id] = None
     settings.current_group_name[chat_id] = None
 
-    update_obj.message.reply_text("Group deleted")
+    update_obj.message.reply_text("Group deleted", reply_markup=ReplyKeyboardRemove())
 
     return ConversationHandler.END
 
@@ -238,16 +249,26 @@ def quit_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
 
     # Verify that user really wants to proceed with action
     if message.strip().lower() != "yes":
-        update_obj.message.reply_text("Ok, cancelling job now. ")
+        update_obj.message.reply_text("Ok, cancelling job now. ", reply_markup=ReplyKeyboardRemove())
         return ConversationHandler.END
 
     # We update movement first
     update_admin_movements(chat_id, group_id=current_group_id, function='/quitgroup', admin_text='')
 
     # Deletes the admin from the admins table
-    # Check if you need to delete all of the admin's movements
     with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
+            # Delete all of admin movements first
+            cur.execute(
+                """
+                DELETE  
+                  FROM admin_movements AM
+                 USING admins A
+                 WHERE AM.admin_id = A.id
+                   AND A.chat_id = %s
+                   AND A.group_id = %s
+                """, (chat_id, current_group_id)
+            )
             cur.execute(
                 """DELETE FROM admins WHERE chat_id = %s::TEXT AND group_id = %s""", (chat_id, current_group_id)
             )
@@ -258,7 +279,7 @@ def quit_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
     settings.current_group_name[chat_id] = None
 
     update_obj.message.reply_text("Ok, you have quit the group. Enter a group now with /enter or "
-                                  "join a new group with /joingroup")
+                                  "join a new group with /joingroup", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
 

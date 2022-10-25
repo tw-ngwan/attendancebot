@@ -49,12 +49,12 @@ def remove_user_verification(update_obj: Update, context: CallbackContext) -> in
 
     # Verify that user really wants to proceed with action
     if message.strip().lower() != "yes":
-        update_obj.message.reply_text("Ok, cancelling job now. ")
+        update_obj.message.reply_text("Ok, cancelling job now. ", reply_markup=ReplyKeyboardRemove())
         return ConversationHandler.END
 
     update_obj.message.reply_text("Type in the numbers of the users you want to remove, separated by spaces. "
                                   "Note that this action cannot be erased! To cancel, type 'OK'. "
-                                  "Eg: (1 3 2)")
+                                  "Eg: (1 3 2)", reply_markup=ReplyKeyboardRemove())
 
     return settings.SECOND
 
