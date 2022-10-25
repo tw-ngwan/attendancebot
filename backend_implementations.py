@@ -69,7 +69,7 @@ def get_admin_groups(chat_id):
 
 
 # Gets all the group members of a group
-def get_group_members(group_id):
+def get_group_members(group_id: int, num_days_to_add: int = 0):
     """Returns a list of tuples: (group_id, group_name)"""
     with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
@@ -79,7 +79,7 @@ def get_group_members(group_id):
                  WHERE group_id = %s
                  ORDER BY rank
                 """,
-                (group_id,)
+                (group_id, num_days_to_add)
             )
             all_ids = cur.fetchall()
 
@@ -104,6 +104,12 @@ def verify_group_and_role(update_obj: Update, context: CallbackContext, role: st
     if check_admin_privileges(chat_id, current_group_id) > role_index_dict[role]:
         # print("False verification")
         reply_non_admin(update_obj, context, role)
+        return False
+
+    # Check that the user has set their username
+    username = check_username_present(chat_id, current_group_id)
+    if not username:
+        update_obj.message.reply_text("Set your username first with /setusername!")
         return False
 
     # print("Verification done")
@@ -134,6 +140,68 @@ def check_admin_privileges(chat_id, group_id):
             con.commit()
 
     return roles_dict[roles[0][0]]
+
+
+# Checks that a user has a username
+def check_username_present(chat_id, group_id):
+    """Checks if a user in a group has a username present, if not, cannot do functions"""
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
+        with con.cursor() as cur:
+            cur.execute(
+                """
+                SELECT username
+                  FROM admins
+                 WHERE chat_id = %s::TEXT
+                   AND group_id = %s
+                   AND username IS NOT NULL
+                """,
+                (chat_id, group_id)
+            )
+            usernames = cur.fetchall()
+            if not usernames:
+                return False
+
+    # return the admin_id if it is present
+    return usernames[0][0]
+
+
+# Gets the admin id
+def get_admin_id(chat_id, group_id):
+    """Checks if a user in a group has a username present, if not, cannot do functions"""
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
+        with con.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id
+                  FROM admins
+                 WHERE chat_id = %s::TEXT
+                   AND group_id = %s
+                """,
+                (chat_id, group_id)
+            )
+            admin_ids = cur.fetchall()
+            if not admin_ids:
+                return False
+
+    # return the admin_id if it is present
+    return admin_ids[0][0]
+
+
+# Updates the admin movements to show everything that every admin has done
+def update_admin_movements(chat_id: int, group_id: int, function: str, admin_text: str) -> None:
+    """Updates the admin_movements table for everything that has been done"""
+    admin_id = get_admin_id(chat_id, group_id)
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
+        with con.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO admin_movements 
+                (admin_id, group_id, DateTime, function, admin_text)
+                VALUES 
+                (%s, %s, CURRENT_TIMESTAMP, %s, %s)""",
+                (admin_id, group_id, function, admin_text)
+            )
+            print("All movements added")
 
 
 # Replies to user that they are not admin
@@ -288,10 +356,11 @@ def get_group_attendance_backend(group_id: int, date: datetime.date = None):
                  WHERE Date = CURRENT_DATE + %s
                    AND attendance.user_id 
                     IN (
-                        SELECT id FROM users WHERE group_id = %s
+                        SELECT id FROM users 
+                         WHERE group_id = %s
                 )
                 """,
-                (num_days_to_add, group_id)
+                (num_days_to_add, group_id, num_days_to_add)
             )
 
             # group_attendance is a list of tuples; each tuple comprises (user_id, user_name, time_period, status)
@@ -310,7 +379,7 @@ def get_group_attendance_backend(group_id: int, date: datetime.date = None):
                 group_attendance_dict[member[0]][1][member[2] - 1] = member[3]
 
             # Gets the attendance of the remaining people. Comes in the form of a list of tuples: (id, name)
-            all_members = get_group_members(group_id)
+            all_members = get_group_members(group_id, num_days_to_add)
 
             # Create a list to see the ids of people whose attendance are not added yet
             non_added_attendance_ids = []
@@ -463,7 +532,8 @@ def get_group_attendance_backend(group_id: int, date: datetime.date = None):
 
 
 # Changes the attendance of users on a specific day
-def change_group_attendance_backend(update_obj: Update, context: CallbackContext, day: datetime.date) -> None:
+def change_group_attendance_backend(update_obj: Update, context: CallbackContext, day: datetime.date,
+                                    function: str) -> None:
     # Gets the message that user sends, and cancels if necessary
     chat_id, message = get_admin_reply(update_obj, context)
     if message == "OK":
@@ -581,6 +651,8 @@ def change_group_attendance_backend(update_obj: Update, context: CallbackContext
         # Update user about success
         update_obj.message.reply_text(f"User {entry[0]}'s attendance updated.")
 
+    # Updates admin movements
+    update_admin_movements(chat_id, group_id=current_group, function=function, admin_text=f"{str(day)}: \n{message}")
     update_obj.message.reply_text("All users' attendance updated.")
 
 

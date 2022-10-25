@@ -1,7 +1,7 @@
 from telegram import Update
 from telegram.ext import CallbackContext, ConversationHandler
 import settings
-from backend_implementations import verify_group_and_role
+from backend_implementations import verify_group_and_role, update_admin_movements
 from keyboards import yes_no_button_markup, group_name_keyboards
 import psycopg2
 from data import DATABASE_URL
@@ -60,10 +60,15 @@ def get_users(update_obj: Update, context: CallbackContext) -> int:
     with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
             current_group_id = settings.current_group_id[chat_id]
-            cur.execute("""SELECT Name FROM users WHERE group_id = %s ORDER BY rank""", (current_group_id, ))
+            cur.execute(
+                """
+                SELECT Name FROM users 
+                 WHERE group_id = %s 
+                 ORDER BY rank""", (current_group_id, ))
             names = [data[0] for data in cur.fetchall()]
 
     name_message = '\n'.join(["Members: "] + names)
+    update_admin_movements(chat_id, group_id=current_group_id, function='/getusers', admin_text='')
     update_obj.message.reply_text(name_message)
     return ConversationHandler.END
 

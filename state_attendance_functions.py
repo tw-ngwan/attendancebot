@@ -6,7 +6,7 @@ import settings
 import datetime
 from backend_implementations import get_admin_reply, check_valid_datetime, \
     get_day_group_attendance, change_group_attendance_backend, get_intended_users, get_single_user_attendance_backend, \
-    convert_rank_to_id, get_group_size, get_child_groups
+    convert_rank_to_id, get_group_size, get_child_groups, verify_group_and_role, update_admin_movements
 from entry_attendance_functions import _change_attendance_send_messages
 
 
@@ -24,7 +24,7 @@ def change_today_attendance_follow_up(update_obj: Update, context: CallbackConte
     today = datetime.date.today()
     while today.weekday() > 4:
         today += datetime.timedelta(days=1)
-    change_group_attendance_backend(update_obj, context, today)
+    change_group_attendance_backend(update_obj, context, today, function='/change')
     return ConversationHandler.END
 
 
@@ -33,7 +33,7 @@ def change_tomorrow_attendance_follow_up(update_obj: Update, context: CallbackCo
     tomorrow = datetime.date.today() + datetime.timedelta(days=1)
     while tomorrow.weekday() > 4:
         tomorrow += datetime.timedelta(days=1)
-    change_group_attendance_backend(update_obj, context, tomorrow)
+    change_group_attendance_backend(update_obj, context, tomorrow, function='/changetmr')
     return ConversationHandler.END
 
 
@@ -52,6 +52,10 @@ def change_any_day_attendance_get_day(update_obj: Update, context: CallbackConte
         update_obj.message.reply_text("Date is a weekend!")
         return ConversationHandler.END
 
+    # If you are backdating attendance (attendance earlier than today), you need to be an admin
+    if day_datetime < datetime.date.today() and not verify_group_and_role(update_obj, context, settings.ADMIN):
+        return ConversationHandler.END
+
     # Stores the day (as a string) in the settings dictionary
     settings.attendance_date_edit[chat_id] = day
 
@@ -67,7 +71,7 @@ def change_any_day_attendance_follow_up(update_obj: Update, context: CallbackCon
     day = settings.attendance_date_edit.pop(chat_id)
     # Converts it into a datetime object
     day = check_valid_datetime(day)
-    change_group_attendance_backend(update_obj, context, day)
+    change_group_attendance_backend(update_obj, context, day, function='/changeany')
     return ConversationHandler.END
 
 
@@ -87,6 +91,7 @@ def get_specific_day_group_attendance_follow_up(update_obj: Update, context: Cal
         return ConversationHandler.END
 
     get_day_group_attendance(context, day_to_check, current_group, update_obj=update_obj)
+    update_admin_movements(chat_id, group_id=current_group, function='/getany', admin_text=date)
     return ConversationHandler.END
 
 
@@ -99,7 +104,8 @@ def get_user_attendance_month_follow_up(update_obj: Update, context: CallbackCon
     start_date = datetime.date.today() - datetime.timedelta(days=31)
 
     # Sends all the attendance messages, after verification
-    _get_user_attendance_process(update_obj, context, user_text, start_date, end_date)
+    _get_user_attendance_process(update_obj, context, user_text, start_date, end_date,
+                                 function='/getusermonth', start=True)
     return ConversationHandler.END
 
 
@@ -129,7 +135,8 @@ def get_user_attendance_arbitrary_follow_up(update_obj: Update, context: Callbac
         return ConversationHandler.END
 
     # Sends all the attendance messages, after verification
-    _get_user_attendance_process(update_obj, context, user_text, start_date, end_date)
+    _get_user_attendance_process(update_obj, context, user_text, start_date, end_date,
+                                 function='/getuserany', start=True)
     return ConversationHandler.END
 
 
@@ -147,7 +154,8 @@ def get_all_users_attendance_month_follow_up(update_obj: Update, context: Callba
     start_date = datetime.date.today() - datetime.timedelta(days=31)
 
     # Gets the attendance for the groups you need, depending on get_subgroups recursive or not
-    _get_all_users_attendance_process(update_obj, context, group_id, start_date, end_date, get_subgroups)
+    _get_all_users_attendance_process(update_obj, context, group_id, start_date, end_date, get_subgroups,
+                                      function='/getallusersmonth', start=True)
     return ConversationHandler.END
 
 
@@ -184,19 +192,22 @@ def get_all_users_attendance_arbitrary_follow_up(update_obj: Update, context: Ca
         return ConversationHandler.END
 
     # Gets the attendance for the groups you need
-    _get_all_users_attendance_process(update_obj, context, group_id, start_date, end_date, get_subgroups)
+    _get_all_users_attendance_process(update_obj, context, group_id, start_date, end_date, get_subgroups,
+                                      function='/getallusersany', start=True)
     return ConversationHandler.END
 
 
 # The backend for getting all users' attendance, recursively
 def _get_all_users_attendance_process(update_obj: Update, context: CallbackContext, group_id: int,
-                                      start_date: datetime.date, end_date: datetime.date, get_subgroups: str) -> None:
+                                      start_date: datetime.date, end_date: datetime.date, get_subgroups: str,
+                                      function: str, start: bool = False) -> None:
     group_size = get_group_size(group_id)
     # Generates the user text to be used
     user_text = ' '.join([str(i) for i in range(1, group_size + 1)])
 
     # Sends all the attendance messages, after verification
-    _get_user_attendance_process(update_obj, context, user_text, start_date, end_date, current_group=group_id)
+    _get_user_attendance_process(update_obj, context, user_text, start_date, end_date, current_group=group_id,
+                                 function=function)
 
     # If recursive, do recursively
     if get_subgroups == 'y':
@@ -204,11 +215,16 @@ def _get_all_users_attendance_process(update_obj: Update, context: CallbackConte
         for child_id in child_group_ids:
             _get_all_users_attendance_process(update_obj, context, child_id, start_date, end_date, get_subgroups)
 
+    # Start is used to check if this was the original function, so update movements
+    if start:
+        update_admin_movements(chat_id=update_obj.message.chat_id, group_id=group_id,
+                               function=function, admin_text=f"Start: {str(start_date)}, End: {str(end_date)}")
+
 
 # The backend process for getting attendance. Implemented by both get_user_attendance functions.
 def _get_user_attendance_process(update_obj: Update, context: CallbackContext, user_text: str,
                                  start_date: datetime.date, end_date: datetime.date,
-                                 current_group=None) -> bool:
+                                 current_group: int = None, function: str = None, start: bool = False) -> bool:
     chat_id = update_obj.message.chat_id
     current_group = settings.current_group_id[chat_id] if current_group is None else current_group
     users = get_intended_users(user_text, current_group)
@@ -227,5 +243,8 @@ def _get_user_attendance_process(update_obj: Update, context: CallbackContext, u
         update_obj.message.reply_text('\n'.join(attendance_message_body))
 
     # Update that everything is done
+    if start:
+        update_admin_movements(chat_id, group_id=current_group, function=function,
+                               admin_text=f"Start: {str(start_date)}, End: {str(end_date)}")
     update_obj.message.reply_text("All users' attendance have been retrieved")
     return True

@@ -10,7 +10,7 @@ import settings
 from keyboards import yes_no_button_markup, group_name_keyboards, ReplyKeyboardRemove
 from backend_implementations import generate_random_password, generate_random_group_code, \
     get_admin_reply, rank_determination, get_group_id_from_button, check_admin_privileges, get_group_size, \
-    get_superparent_group
+    get_superparent_group, update_admin_movements
 import psycopg2
 from data import DATABASE_URL
 
@@ -74,8 +74,10 @@ def create_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
     update_obj.message.reply_text(admin_password)
     update_obj.message.reply_text(f"You have entered {title}. Feel free to perform whatever functions you need here! "
                                   f"For starters, maybe /addusers?")
+    update_obj.message.reply_text(f"However, before that, please set your username! Type your username into the "
+                                  f"chat now.")
     # Have some more conversation take place
-    return ConversationHandler.END
+    return settings.SECOND
 
 
 # Enters a group
@@ -124,6 +126,9 @@ def delete_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
 
             # Save changes
             con.commit()
+
+    # Updates the database
+    update_admin_movements(chat_id, current_group_id, function='/deletegroup', admin_text='')
 
     # Leave the group
     settings.current_group_id[chat_id] = None
@@ -187,7 +192,28 @@ def join_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
     settings.current_group_name[chat_id] = group_name
 
     update_obj.message.reply_text(f"Congratulations, you are now a {user_rank} "
-                                  f"of {settings.current_group_name[chat_id]}!")
+                                  f"of {settings.current_group_name[chat_id]}! Let's set your username now. "
+                                  f"Type your username into the chat now!")
+    return settings.THIRD
+
+
+# Sets username of a user
+def set_username(update_obj: Update, context: CallbackContext) -> int:
+    chat_id, message = get_admin_reply(update_obj, context)
+    username = message.strip()
+
+    # Sets the username
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
+        with con.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE admins 
+                   SET username = %s
+                 WHERE chat_id = %s""",
+                (username, chat_id)
+            )
+
+    update_obj.message.reply_text("Your username has been set")
     return ConversationHandler.END
 
 
@@ -201,7 +227,8 @@ def quit_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
         update_obj.message.reply_text("Ok, cancelling job now. ")
         return ConversationHandler.END
 
-    # Deletes the user from the admins table
+    # Deletes the admin from the admins table
+    # Check if you need to delete all of the admin's movements
     with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
             cur.execute(
@@ -376,6 +403,9 @@ def merge_groups_follow_up(update_obj: Update, context: CallbackContext) -> int:
 
                 # Save changes
                 con.commit()
+
+        # Updates the merge movement
+        update_admin_movements(chat_id, group_id=parent_id, function='/mergegroups', admin_text=str(all_groups))
 
         context.bot.send_message(chat_id, "All groups have been merged", reply_markup=ReplyKeyboardRemove())
         return ConversationHandler.END

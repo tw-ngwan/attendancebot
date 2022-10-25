@@ -19,6 +19,7 @@ group_id INTEGER NOT NULL,
 Name        TEXT NOT NULL, 
 DateAdded   DATE NOT NULL, 
 rank     INTEGER NOT NULL, 
+DateRemoved DATE, 
 FOREIGN KEY(group_id) REFERENCES groups(id)
 );
 
@@ -39,7 +40,19 @@ id        SERIAL PRIMARY KEY UNIQUE NOT NULL,
 group_id INTEGER NOT NULL, 
 DateAdded   DATE NOT NULL, 
 chat_id     TEXT NOT NULL, 
-role        TEXT NOT NULL, 
+role        TEXT NOT NULL,
+username    TEXT, 
+FOREIGN KEY(group_id) REFERENCES groups(id)
+);
+
+CREATE TABLE IF NOT EXISTS admin_movements (
+id         SERIAL PRIMARY KEY UNIQUE NOT NULL, 
+admin_id   INTEGER NOT NULL, 
+group_id   INTEGER NOT NULL, 
+DateTime   TIMESTAMP NOT NULL, 
+function   TEXT NOT NULL, 
+admin_text TEXT NOT NULL, 
+FOREIGN KEY(admin_id) REFERENCES admins(id), 
 FOREIGN KEY(group_id) REFERENCES groups(id)
 );
 

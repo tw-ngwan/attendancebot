@@ -81,6 +81,8 @@ Here is a walkthrough of what each of the functions will do, and your level need
 /changetitle: Changes group title. Admin privileges required. (Admin) 
 /getgroupcodes: Sends messages with the group code, and group passwords relative to your level (any)
 /uprank: Promotes user to Admin/Member, with the correct password (Observer/Member)
+/setusername: Sets your username (any)
+/getgrouphistory: Gets a list of the past 100 functions carried out by users of the group (Admin)
 
 /addusers: Adds users to the group you are currently in. Recursive, till enter OK (Member)
 /removeusers: Removes users from the group you are currently in. Recursive, till enter OK (Admin)

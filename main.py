@@ -37,7 +37,8 @@ from entry_attendance_functions import get_today_group_attendance, get_tomorrow_
     get_user_attendance_month, get_user_attendance_arbitrary, \
     get_all_users_attendance_month, get_all_users_attendance_arbitrary
 from entry_group_functions import create_group, enter_group, leave_group, current_group, delete_group, merge_groups, \
-    join_existing_group, quit_group, change_group_title, uprank, get_group_passwords
+    join_existing_group, quit_group, change_group_title, uprank, get_group_passwords, set_username_precursor, \
+    get_group_history
 from entry_help_functions import start, user_help, user_help_full
 from entry_user_functions import add_users, get_users, remove_users, edit_users, change_group_ordering, \
     change_user_group
@@ -48,7 +49,7 @@ from state_attendance_functions import change_today_attendance_follow_up, change
     get_all_users_attendance_month_follow_up, get_all_users_attendance_arbitrary_follow_up
 from state_group_functions import create_group_follow_up, enter_group_follow_up, delete_group_follow_up, \
     join_group_get_group_code, join_group_follow_up, quit_group_follow_up, change_group_title_follow_up, \
-    uprank_follow_up, merge_groups_check_super_group, merge_groups_start_add_users, merge_groups_follow_up
+    uprank_follow_up, merge_groups_check_super_group, merge_groups_start_add_users, merge_groups_follow_up, set_username
 from state_user_functions import add_user_follow_up, remove_user_verification, remove_user_follow_up, \
     edit_user_follow_up, change_group_ordering_follow_up, change_user_group_get_initial, change_user_group_get_final, \
     change_user_group_follow_up
@@ -90,6 +91,7 @@ def main():
         entry_points=[CommandHandler('creategroup', create_group)],
         states={
             settings.FIRST: [MessageHandler(Filters.text, create_group_follow_up)],
+            settings.SECOND: [MessageHandler(Filters.text, set_username)]
         },
         fallbacks=[]
     )
@@ -124,7 +126,8 @@ def main():
         entry_points=[CommandHandler('joingroup', join_existing_group)],
         states={
             settings.FIRST: [MessageHandler(Filters.text, join_group_get_group_code)],
-            settings.SECOND: [MessageHandler(Filters.text, join_group_follow_up)]
+            settings.SECOND: [MessageHandler(Filters.text, join_group_follow_up)],
+            settings.THIRD: [MessageHandler(Filters.text, set_username)]
         },
         fallbacks=[]
     )
@@ -152,6 +155,18 @@ def main():
         states={
             settings.FIRST: [MessageHandler(Filters.text, uprank_follow_up)]
         },
+        fallbacks=[]
+    )
+    set_username_handler = ConversationHandler(
+        entry_points=[CommandHandler('setusername', set_username_precursor)],
+        states={
+            settings.FIRST: [MessageHandler(Filters.text, set_username)]
+        },
+        fallbacks=[]
+    )
+    get_group_history_handler = ConversationHandler(
+        entry_points=[CommandHandler('getgrouphistory', get_group_history)],
+        states={},
         fallbacks=[]
     )
 
@@ -267,7 +282,8 @@ def main():
     all_handlers = [start_handler, help_handler, help_full_handler,
                     create_group_handler, enter_group_handler, leave_group_handler, current_group_handler,
                     delete_group_handler, merge_groups_handler, join_groups_handler, quit_group_handler,
-                    change_group_title_handler, get_group_passwords_handler, uprank_handler,
+                    change_group_title_handler, get_group_passwords_handler, uprank_handler, set_username_handler,
+                    get_group_history_handler,
 
                     add_users_handler, get_users_handler, remove_users_handler, edit_users_handler,
                     change_group_ordering_handler, change_group_users_handler,

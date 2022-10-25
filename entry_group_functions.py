@@ -2,7 +2,7 @@ from telegram import Update
 from telegram.ext import CallbackContext, ConversationHandler
 import settings
 from keyboards import yes_no_button_markup, group_name_keyboards
-from backend_implementations import verify_group_and_role, check_admin_privileges
+from backend_implementations import verify_group_and_role, check_admin_privileges, get_admin_id
 import psycopg2
 from data import DATABASE_URL
 
@@ -107,6 +107,12 @@ def change_group_title(update_obj: Update, context: CallbackContext) -> int:
     return settings.FIRST
 
 
+# The precursor function to setting username
+def set_username_precursor(update_obj: Update, context: CallbackContext) -> int:
+    update_obj.message.reply_text("Key your username into the chat")
+    return settings.FIRST
+
+
 # Gets the group passwords of the levels you need
 def get_group_passwords(update_obj: Update, context: CallbackContext) -> int:
 
@@ -174,3 +180,44 @@ def uprank(update_obj: Update, context: CallbackContext) -> int:
 
     update_obj.message.reply_text("Enter the group password (case-sensitive)")
     return settings.FIRST
+
+
+# Allow an admin to get the last-done functions
+def get_group_history(update_obj: Update, context: CallbackContext):
+
+    # First, verify that you are an admin
+    if not verify_group_and_role(update_obj, context, settings.ADMIN):
+        return ConversationHandler.END
+
+    chat_id = update_obj.message.chat_id
+    group_id = settings.current_group_id[chat_id]
+    admin_id = get_admin_id(chat_id, group_id)
+    # Accesses the table to print out history
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
+        with con.cursor() as cur:
+            cur.execute(
+                """
+                SELECT admins.username, admin_movements.DateTime, admin_movements.function, admin_movements.admin_text
+                  FROM admin_movements
+                  JOIN admins
+                    ON admins.id = admin_movements.admin_id 
+                 WHERE admin_movements.admin_id = %s
+                   AND admin_movements.group_id = %s
+                 ORDER BY admin_movements.DateTime DESC
+                 LIMIT 100
+                """,
+                (admin_id, group_id)
+            )
+            values = cur.fetchall()
+            if not values:
+                update_obj.message.reply_text("Nothing yet...")
+                return ConversationHandler.END
+
+    message_content = []
+    for value in values:
+        new_message = f"Username: {value[0]}\nDate and Time: {value[1]}\nFunction: {value[2]}\nFollow-up Message: {value[3]}\n"
+        message_content.append(new_message)
+
+    message_to_send = '\n'.join(message_content)
+    update_obj.message.reply_text(message_to_send)
+    return ConversationHandler.END

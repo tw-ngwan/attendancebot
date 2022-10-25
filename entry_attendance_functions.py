@@ -7,7 +7,7 @@ from telegram.ext import CallbackContext, ConversationHandler
 import settings
 import datetime
 from backend_implementations import get_group_attendance_backend, check_admin_privileges, \
-    reply_non_admin, get_day_group_attendance, verify_group_and_role
+    reply_non_admin, get_day_group_attendance, verify_group_and_role, update_admin_movements
 
 
 "https://stackoverflow.com/questions/48288124/how-to-send-message-in-specific-time-telegrambot"
@@ -29,6 +29,7 @@ def get_today_group_attendance(update_obj: Update, context: CallbackContext) -> 
         return ConversationHandler.END
 
     get_day_group_attendance(context, today, current_group, update_obj=update_obj)
+    update_admin_movements(chat_id, group_id=current_group, function='/get', admin_text='')
     return ConversationHandler.END
 
 
@@ -46,6 +47,7 @@ def get_tomorrow_group_attendance(update_obj: Update, context: CallbackContext) 
         return ConversationHandler.END
 
     get_day_group_attendance(context, tomorrow, current_group, update_obj=update_obj)
+    update_admin_movements(chat_id, group_id=current_group, function='/gettmr', admin_text='')
     return ConversationHandler.END
 
 
@@ -136,8 +138,9 @@ def change_attendance(update_obj: Update, context: CallbackContext) -> int:
 # Asks question to change attendance of group on any day
 def change_any_day_attendance(update_obj: Update, context: CallbackContext) -> int:
 
+    # Change of plans: User must be at least Member, but if they want to backdate, at least Admin
     # We check that the user is in a group, and is at least Admin in the group
-    if not verify_group_and_role(update_obj, context, settings.ADMIN):
+    if not verify_group_and_role(update_obj, context, settings.MEMBER):
         return ConversationHandler.END
 
     update_obj.message.reply_text("Enter the date that you want to change attendance of, in the 6-digit format "

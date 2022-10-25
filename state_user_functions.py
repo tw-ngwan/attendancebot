@@ -2,7 +2,7 @@ from telegram import Update
 from telegram.ext import CallbackContext, ConversationHandler
 from backend_implementations import get_admin_reply, get_intended_users, convert_rank_to_id, \
     get_intended_user_swap_pairs, swap_users, get_group_id_from_button, get_group_size, check_admin_privileges, \
-    reply_non_admin
+    reply_non_admin, update_admin_movements
 from keyboards import group_name_keyboards, ReplyKeyboardRemove
 import settings
 import psycopg2
@@ -35,6 +35,9 @@ def add_user_follow_up(update_obj: Update, context: CallbackContext) -> int:
             )
 
             con.commit()
+
+    # Add admin movement into chat
+    update_admin_movements(chat_id, current_group, function='/addusers', admin_text=name)
 
     update_obj.message.reply_text(f"Ok, {name} added")
     return settings.FIRST
@@ -76,7 +79,7 @@ def remove_user_follow_up(update_obj: Update, context: CallbackContext) -> int:
     user_ids_for_parsing = [user_id[0] for user_id in user_ids]
     print(user_ids_for_parsing)
 
-    # Now, we remove the users from all tables concerned (attendance, users)
+    # Now, we set the date of removal as today
     with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
             # First, we get the ranks of the deleted users
@@ -89,15 +92,31 @@ def remove_user_follow_up(update_obj: Update, context: CallbackContext) -> int:
             )
             ranks = cur.fetchall()
             ranks.sort(reverse=True)
+
+            # Now, we set the users to have a former group
             cur.executemany(
                 """
-                DELETE FROM attendance
-                WHERE user_id = %s""",
+                UPDATE users 
+                SET former_group = group_id
+                WHERE id = %s""",
                 user_ids
             )
+
+            # Now, we remove the users from the group
             cur.executemany(
                 """
-                DELETE FROM users
+                UPDATE users 
+                SET group_id = 97
+                WHERE id = %s""",
+                user_ids
+                # 97 is the group of ALL deleted users. This is where former users are stored
+            )
+
+            # Now, we update the deleted users' ranks to -1000000
+            cur.executemany(
+                """
+                UPDATE users
+                SET rank = -1000000
                 WHERE id = %s""",
                 user_ids
             )
@@ -113,33 +132,50 @@ def remove_user_follow_up(update_obj: Update, context: CallbackContext) -> int:
                 ranks_to_update
             )
 
-            # # In a REALLY bad move, this code is copied/duplicated from change_user_group
-            # current_group_size = get_group_size(current_group)
-            # print(current_group_size)
-            #
-            # # Now, updates the users table to change the ranks of the original users
-            # initial_user_parameters = [(i, current_group, i, current_group) for i in
-            #                            range(current_group_size, 0, -1)]
-            # print(initial_user_parameters)
-            # cur.executemany(
-            #     # Try and see if this can be cut down
-            #     """
-            #     UPDATE users
-            #        SET rank = %s
-            #      WHERE id = (SELECT id
-            #                    FROM users
-            #                   WHERE group_id = %s
-            #                     AND rank = (SELECT MIN(rank)
-            #                                    FROM users
-            #                                   WHERE rank >= %s
-            #                                     AND group_id = %s
-            #                     )
-            #     )
-            #     """, initial_user_parameters
-            # )
+    # This is the old delete function, which removes all users entirely. The current function
+    # instead just deactivates the users, but keeps their data
+    # # Now, we remove the users from all tables concerned (attendance, users)
+    # with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
+    #     with con.cursor() as cur:
+    #         # First, we get the ranks of the deleted users
+    #         cur.execute(
+    #             """
+    #             SELECT rank
+    #               FROM users
+    #              WHERE id = ANY(%s)""",
+    #             (user_ids_for_parsing,)
+    #         )
+    #         ranks = cur.fetchall()
+    #         ranks.sort(reverse=True)
+    #         cur.executemany(
+    #             """
+    #             DELETE FROM attendance
+    #             WHERE user_id = %s""",
+    #             user_ids
+    #         )
+    #         cur.executemany(
+    #             """
+    #             DELETE FROM users
+    #             WHERE id = %s""",
+    #             user_ids
+    #         )
+    #
+    #         ranks_to_update = [(current_group, rank) for rank in ranks]
+    #         # Updating original ranks
+    #         cur.executemany(
+    #             """
+    #             UPDATE users
+    #                SET rank = rank - 1
+    #              WHERE group_id = %s
+    #                AND rank > %s""",
+    #             ranks_to_update
+    #         )
+    #
+    #         # Save changes
+    #         con.commit()
 
-            # Save changes
-            con.commit()
+    # Update that users are removed
+    update_admin_movements(chat_id, group_id=current_group, function='/removeusers', admin_text=user_text)
 
     update_obj.message.reply_text("All users removed")
     return ConversationHandler.END
@@ -186,6 +222,9 @@ def edit_user_follow_up(update_obj: Update, context: CallbackContext) -> int:
 
             con.commit()
 
+    # Updates admin movements
+    update_admin_movements(chat_id, group_id=current_group, function='/editusers', admin_text=message)
+
     update_obj.message.reply_text("All edits done")
     return ConversationHandler.END
 
@@ -204,6 +243,9 @@ def change_group_ordering_follow_up(update_obj: Update, context: CallbackContext
     # Swaps all pairs of users in sequence
     for (a, b) in pairs_to_swap:
         swap_users(a, b, group_id)
+
+    # Updates admin movements
+    update_admin_movements(chat_id, group_id=group_id, function='/changeordering', admin_text=message)
 
     update_obj.message.reply_text("All orderings swapped")
     return ConversationHandler.END
@@ -370,6 +412,12 @@ def change_user_group_follow_up(update_obj: Update, context: CallbackContext) ->
 
             # Save changes
             con.commit()
+
+    # Updates admin movements
+    update_admin_movements(chat_id, group_id=initial_group, function='/changeusergroup',
+                           admin_text=f"Removed users from here: {message}")
+    update_admin_movements(chat_id, group_id=final_group, function='/changeusergroup',
+                           admin_text=f"Added users to here: {message}")
 
     context.bot.send_message(chat_id, "All users shifted", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
