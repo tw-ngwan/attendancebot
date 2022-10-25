@@ -360,7 +360,7 @@ def get_group_attendance_backend(group_id: int, date: datetime.date = None):
                          WHERE group_id = %s
                 )
                 """,
-                (num_days_to_add, group_id, num_days_to_add)
+                (num_days_to_add, group_id)
             )
 
             # group_attendance is a list of tuples; each tuple comprises (user_id, user_name, time_period, status)
