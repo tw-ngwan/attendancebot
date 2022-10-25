@@ -200,6 +200,10 @@ def join_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
 # Sets username of a user
 def set_username(update_obj: Update, context: CallbackContext) -> int:
     chat_id, message = get_admin_reply(update_obj, context)
+    group_id = settings.current_group_id[chat_id]
+    if group_id is None:
+        update_obj.message.reply_text("Enter a group first with /entergroup!")
+        return ConversationHandler.END
     username = message.strip()
 
     # Sets the username
@@ -209,8 +213,9 @@ def set_username(update_obj: Update, context: CallbackContext) -> int:
                 """
                 UPDATE admins 
                    SET username = %s
-                 WHERE chat_id = %s::TEXT""",
-                (username, chat_id)
+                 WHERE chat_id = %s::TEXT
+                   AND group_id = %s""",
+                (username, chat_id, group_id)
             )
 
     update_obj.message.reply_text("Your username has been set")
