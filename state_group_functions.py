@@ -204,7 +204,7 @@ def set_username(update_obj: Update, context: CallbackContext) -> int:
     chat_id, message = get_admin_reply(update_obj, context)
     group_id = settings.current_group_id[chat_id]
     if group_id is None:
-        update_obj.message.reply_text("Enter a group first with /entergroup!")
+        update_obj.message.reply_text("Enter a group first with /enter!")
         return ConversationHandler.END
     username = message.strip()
 
