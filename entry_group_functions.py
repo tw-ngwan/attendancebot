@@ -201,8 +201,7 @@ def get_group_history(update_obj: Update, context: CallbackContext):
                   FROM admin_movements
                   JOIN admins
                     ON admins.id = admin_movements.admin_id 
-                 WHERE admin_movements.admin_id = %s
-                   AND admin_movements.group_id = %s
+                 WHERE admin_movements.group_id = %s
                  ORDER BY admin_movements.DateTime DESC
                  LIMIT 100
                 """,
