@@ -208,6 +208,13 @@ def set_username(update_obj: Update, context: CallbackContext) -> int:
         return ConversationHandler.END
     username = message.strip()
 
+    # Because a lot of people accidentally type function names in, their usernames are not legit
+    # So we change this
+    if username[0] == '/':
+        update_obj.message.reply_text("You accidentally typed a function in! We're setting the username here, "
+                                      "be careful and so sorry! Type /setusername to set your username again.")
+        return ConversationHandler.END
+
     # Sets the username
     with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
@@ -233,6 +240,9 @@ def quit_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
     if message.strip().lower() != "yes":
         update_obj.message.reply_text("Ok, cancelling job now. ")
         return ConversationHandler.END
+
+    # We update movement first
+    update_admin_movements(chat_id, group_id=current_group_id, function='/quitgroup', admin_text='')
 
     # Deletes the admin from the admins table
     # Check if you need to delete all of the admin's movements
