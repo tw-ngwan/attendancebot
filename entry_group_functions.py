@@ -205,7 +205,7 @@ def get_group_history(update_obj: Update, context: CallbackContext):
                  ORDER BY admin_movements.DateTime DESC
                  LIMIT 100
                 """,
-                (admin_id, group_id)
+                (group_id, )
             )
             values = cur.fetchall()
             if not values:
