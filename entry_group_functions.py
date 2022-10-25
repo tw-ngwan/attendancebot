@@ -212,11 +212,16 @@ def get_group_history(update_obj: Update, context: CallbackContext):
                 update_obj.message.reply_text("Nothing yet...")
                 return ConversationHandler.END
 
+    messages = []
     message_content = []
     for value in values:
         new_message = f"Username: {value[0]}\nDate and Time: {value[1]}\nFunction: {value[2]}\nFollow-up Message: {value[3]}\n"
         message_content.append(new_message)
+        if len(message_content) >= 10:
+            messages.append('\n'.join(message_content))
+            message_content = []
 
-    message_to_send = '\n'.join(message_content)
-    update_obj.message.reply_text(message_to_send)
+    messages.append('\n'.join(message_content))
+    for message in messages:
+        update_obj.message.reply_text(message)
     return ConversationHandler.END
