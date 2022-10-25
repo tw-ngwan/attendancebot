@@ -121,12 +121,11 @@ def delete_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
             # Delete from admin_movements
             cur.execute(
                 """
-                DELETE FROM admin_movements 
-                WHERE admin_id IN (
-                    SELECT id 
-                      FROM admins 
-                     WHERE group_id = %s
-                    )
+                DELETE  
+                  FROM admin_movements AM
+                 USING admins A
+                 WHERE AM.admin_id = A.id
+                   AND A.group_id = %s
                 """, (current_group_id, )
             )
             # Delete from admins
