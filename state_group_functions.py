@@ -138,9 +138,6 @@ def delete_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
             # Save changes
             con.commit()
 
-    # Updates the database
-    update_admin_movements(chat_id, current_group_id, function='/deletegroup', admin_text='')
-
     # Leave the group
     settings.current_group_id[chat_id] = None
     settings.current_group_name[chat_id] = None
