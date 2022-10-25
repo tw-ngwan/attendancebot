@@ -212,7 +212,7 @@ def set_username(update_obj: Update, context: CallbackContext) -> int:
     # So we change this
     if username[0] == '/':
         update_obj.message.reply_text("You accidentally typed a function in! We're setting the username here, "
-                                      "be careful and so sorry! Type /setusername to set your username again.")
+                                      "be careful! Type /setusername to set your username again.")
         return ConversationHandler.END
 
     # Sets the username
