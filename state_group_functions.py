@@ -126,6 +126,7 @@ def delete_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
                     SELECT id 
                       FROM admins 
                      WHERE group_id = %s
+                    )
                 """, (current_group_id, )
             )
             # Delete from admins
@@ -265,7 +266,7 @@ def quit_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
                   FROM admin_movements AM
                  USING admins A
                  WHERE AM.admin_id = A.id
-                   AND A.chat_id = %s
+                   AND A.chat_id = %s::TEXT
                    AND A.group_id = %s
                 """, (chat_id, current_group_id)
             )
