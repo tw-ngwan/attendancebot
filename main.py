@@ -53,6 +53,7 @@ from state_group_functions import create_group_follow_up, enter_group_follow_up,
 from state_user_functions import add_user_follow_up, remove_user_verification, remove_user_follow_up, \
     edit_user_follow_up, change_group_ordering_follow_up, change_user_group_get_initial, change_user_group_get_final, \
     change_user_group_follow_up
+from developer_functions import *
 
 
 # Getting the API_KEY
@@ -278,6 +279,23 @@ def main():
         fallbacks=[]
     )
 
+    broadcast_handler = ConversationHandler(
+        entry_points=[CommandHandler('broadcast', verify_developer)],
+        states={
+            settings.FIRST: [MessageHandler(Filters.text, broadcast)],
+            settings.SECOND: [MessageHandler(Filters.text, broadcast_follow_up)]
+        },
+        fallbacks=[]
+    )
+    developer_sql_handler = ConversationHandler(
+        entry_points=[CommandHandler('developerpanel', verify_developer)],
+        states={
+            settings.FIRST: [MessageHandler(Filters.text, developer_sql_console)],
+            settings.SECOND: [MessageHandler(Filters.text, developer_sql_console_follow_up)]
+        },
+        fallbacks=[]
+    )
+
     global dispatcher
     all_handlers = [start_handler, help_handler, help_full_handler,
                     create_group_handler, enter_group_handler, leave_group_handler, current_group_handler,
@@ -292,7 +310,9 @@ def main():
                     get_user_attendance_month_handler, get_user_attendance_arbitrary_handler,
                     get_all_users_attendance_month_handler, get_all_users_attendance_arbitrary_handler,
                     change_today_attendance_handler, change_tomorrow_attendance_handler,
-                    change_any_day_attendance_handler
+                    change_any_day_attendance_handler,
+
+                    broadcast_handler, developer_sql_handler
                     ]
 
     for handler in all_handlers:
@@ -300,11 +320,6 @@ def main():
 
     # Start the bot, let it wait for a user command
     updater.start_polling()
-    # This allows it to use a webhook to retrieve data immediately
-    # updater.start_webhook(listen="0.0.0.0",
-    #                       port=int(PORT),
-    #                       url_path=API_KEY)
-    # updater.bot.set_webhook(f'https://attendance-6bot.herokuapp.com/{API_KEY}')
 
     # Run the bot until you press Ctrl-C
     updater.idle()
