@@ -6,7 +6,8 @@ from telegram.ext import CallbackContext, ConversationHandler, Defaults
 import settings
 import datetime
 from dateutil import tz
-from backend_implementations import get_day_group_attendance
+from backend_implementations import get_day_group_attendance, get_admin_reply
+from developer_functions import get_all_developer_chat_ids
 import psycopg2
 from data import DATABASE_URL
 
@@ -37,6 +38,8 @@ def start(update_obj: Update, context: CallbackContext) -> ConversationHandler.E
     SGT = tz.gettz('Asia/Singapore')
     Defaults.tzinfo = SGT
 
+    # This NEEDS to be updated. You need to check what groups user is in, then run this
+    # Also you need a setting to see if the user wants to be active or not
     # Starts running the repeated functions daily:
     # Sends today's attendance at 6am, tomorrow's attendance at 2pm and 9pm
     context.job_queue.run_daily(get_today_attendance, time=datetime.time(hour=6, minute=0, tzinfo=SGT),
@@ -105,3 +108,25 @@ def get_admin_groups(context: CallbackContext):
 
     print(group_ids)
     return group_ids
+
+
+# For users to send feedback
+def feedback(update_obj: Update, context: CallbackContext):
+    update_obj.message.reply_text("Send the feedback message that you want to give to the developers here")
+    return settings.FIRST
+
+
+# Follow up on feedback function
+def feedback_follow_up(update_obj: Update, context: CallbackContext):
+    chat_id, message = get_admin_reply(update_obj, context)
+    username = update_obj.message.from_user.username
+    developer_ids = get_all_developer_chat_ids()  # This one you may want to change
+    try:
+        for developer in developer_ids:
+            context.bot.send_message(chat_id=developer, message=f"Feedback from {username} (chat id: {chat_id}):")
+            context.bot.send_message(chat_id=developer, message=message)
+    except Exception:
+        update_obj.message.reply_text("Sorry, there has been an issue... Your feedback can't get through "
+                                      "for now, please try again later!")
+    else:
+        update_obj.message.reply_text("Your feedback has been sent to the developers. Thank you!")

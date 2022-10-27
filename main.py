@@ -26,12 +26,12 @@ However, if you want to change the attendance of a subgroup of a group, you need
 There are functions for editing, merging groups, and transferring users between groups if those are needed.
 """
 
-
 import os
 
 from telegram.ext import Updater, ConversationHandler, CommandHandler, MessageHandler, Filters
 
 import settings
+import logging
 from entry_attendance_functions import get_today_group_attendance, get_tomorrow_group_attendance, \
     get_any_day_group_attendance, change_attendance, change_any_day_attendance, \
     get_user_attendance_month, get_user_attendance_arbitrary, \
@@ -39,7 +39,7 @@ from entry_attendance_functions import get_today_group_attendance, get_tomorrow_
 from entry_group_functions import create_group, enter_group, leave_group, current_group, delete_group, merge_groups, \
     join_existing_group, quit_group, change_group_title, uprank, get_group_passwords, set_username_precursor, \
     get_group_history
-from entry_help_functions import start, user_help, user_help_full
+from entry_help_functions import start, user_help, user_help_full, feedback, feedback_follow_up
 from entry_user_functions import add_users, get_users, remove_users, edit_users, change_group_ordering, \
     change_user_group
 from state_attendance_functions import change_today_attendance_follow_up, change_tomorrow_attendance_follow_up, \
@@ -55,7 +55,6 @@ from state_user_functions import add_user_follow_up, remove_user_verification, r
     change_user_group_follow_up
 from developer_functions import *
 
-
 # Getting the API_KEY
 API_KEY = os.getenv("API_KEY_TELEGRAM")
 
@@ -63,20 +62,24 @@ API_KEY = os.getenv("API_KEY_TELEGRAM")
 updater = Updater(API_KEY)
 dispatcher = updater.dispatcher
 
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    level=logging.INFO)
+
 # Checking that all libraries have been loaded, function can start
 print("Bot starting...")
 
 # Initialize all global variables
 settings.init()
 
-"Schedule message: https://stackoverflow.com/questions/48288124/how-to-send-message-in-specific-time-telegrambot"
-"If you need to remake a table: "
-"https://stackoverflow.com/questions/631060/can-i-alter-a-column-in-an-sqlite-table-to-autoincrement-after-creation"
+"Stuff to add: Add column to table to see if admin wants to be active. If yes, then let them " \
+"receive a message every time someone updates something. Add a function to change that. " \
+"Add a feedback function that allows user to send you feedback " \
+"Index your attendance table, and see how it runs. " \
+"Delete old entries from the admin_movements table to save time (?)"
 
 
 # Main function
 def main():
-
     # Introducing the necessary conversation handlers
 
     # Start/help functions
@@ -279,6 +282,14 @@ def main():
         fallbacks=[]
     )
 
+    feedback_handler = ConversationHandler(
+        entry_points=[CommandHandler('feedback', feedback)],
+        states={
+            settings.FIRST: [MessageHandler(Filters.text, feedback_follow_up)]
+        },
+        fallbacks=[]
+    )
+
     broadcast_handler = ConversationHandler(
         entry_points=[CommandHandler('broadcast', verify_developer)],
         states={
@@ -312,7 +323,9 @@ def main():
                     change_today_attendance_handler, change_tomorrow_attendance_handler,
                     change_any_day_attendance_handler,
 
-                    broadcast_handler, developer_sql_handler
+                    feedback_handler,
+
+                    broadcast_handler, developer_sql_handler,
                     ]
 
     for handler in all_handlers:

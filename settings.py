@@ -102,6 +102,8 @@ Here is a walkthrough of what each of the functions will do, and your level need
 /getallusersmonth: Sends a message with the attendance status of all users in the group over the past month (Admin)
 /getallusersany: Sends a message with the attendance status of all users in the group over any period of time (Admin)
 
+/feedback: Sends feedback to the developers (None) 
+
 To perform a function, call /enter first to enter a group. Your actions will be localized within the group. 
 """
 

@@ -276,7 +276,7 @@ def get_day_group_attendance(context: CallbackContext, day: datetime.date, curre
     # Get the childgroups and recursively perform this function
 
     # Once user is verified, start getting attendance
-    date_string = f"{day.day:02d}{day.month:02d}{day.year:04d}"  # day.year[2:]:04d
+    date_string = f"{day.day:02d}{day.month:02d}{str(day.year)[2:]}"  # day.year[2:]:04d
     attendance_message_beginning = [f"*Attendance for {date_string}:*", ""]
 
     attendance_message_body, attendance_status_dict = get_day_group_attendance_message_recursive(
@@ -403,42 +403,6 @@ def get_group_attendance_backend(group_id: int, date: datetime.date = None):
 
                         # If not present, find the final date of the attendance
                         else:
-
-                            # How this query works
-                            # The query in brackets finds the number of attendance statuses that are different from
-                            # statuses of the days before, for the user and group in question.
-                            # Afterwards, to get the latest date, we select those with zero different statuses compared
-                            # with the previous days (starting from day 0), and select the latest date.
-                            # cur.execute(
-                            #     """
-                            #     SELECT AT.Date, AT.AttendanceStatus
-                            #       FROM attendance AT
-                            #      WHERE user_id = %s
-                            #        AND group_id = %s
-                            #        AND Date >= CURRENT_DATE + %s
-                            #        AND (
-                            #         SELECT COUNT(*) FROM attendance A
-                            #         WHERE A.AttendanceStatus <> AT.AttendanceStatus
-                            #         AND A.Date <= AT.Date
-                            #         AND A.Date >= CURRENT_DATE + %s
-                            #         AND A.user_id = AT.user_id
-                            #         AND A.group_id = AT.group_id
-                            #     ) = 0
-                            #     ORDER BY Date DESC
-                            #     LIMIT 1
-                            #     """,
-                            #     (num_days_to_add, all_members[i][0], group_id, num_days_to_add)
-                            # )
-                            # date_parameters = cur.fetchall()
-                            # print(date_parameters)
-                            # final_date, attendance_status = date_parameters[0]
-                            # # print(final_date, attendance_status)
-                            # final_date_representation = represent_date(final_date)
-                            # assert attendance_status == group_attendance_dict[all_members[i][0]][1][0]
-                            # attendance_message_body.append(''.join([str(i + 1), ') ', all_members[i][1], ' - ',
-                            #                                         attendance_status, ' till ',
-                            #                                         final_date_representation]))
-                            # attendance_status_dict[attendance_status] += 1
                             cur.execute(
                                 """
                                 SELECT Date, AttendanceStatus, (
@@ -470,7 +434,8 @@ def get_group_attendance_backend(group_id: int, date: datetime.date = None):
                             print(date_parameters)
                             final_date, attendance_status, rungroup = date_parameters[0]
                             # print(final_date, attendance_status)
-                            final_date_representation = represent_date(final_date)  # To be resolved, this is datetime not text anymore
+                            final_date_representation = represent_date(final_date)
+                            # To be resolved, this is datetime not text anymore
                             assert attendance_status == group_attendance_dict[all_members[i][0]][1][0]
                             attendance_message_body.append(''.join([str(i + 1), ') ', all_members[i][1], ' - ',
                                                                     attendance_status, ' till ',
@@ -583,6 +548,14 @@ def change_group_attendance_backend(update_obj: Update, context: CallbackContext
                 update_obj.message.reply_text(f"Regarding user {entry[0]}: Enter a status!")
                 continue
 
+            # Resolving bug where / in status and they update 4 times
+            if '/' in status:
+                update_obj.message.reply_text(f"Regarding user {entry[0]}: When updating with till, don't "
+                                              f"use the /. Update today's attendance, then update tomorrow's "
+                                              f"attendance till the final day (eg: update P / LL first, "
+                                              f"then update LL till 100822 from tomorrow). Thank you!")
+                continue
+
             final_date = final_date.strip()
 
             final_date = check_valid_datetime(date_to_check=final_date, date_compared=day, after_date=True)
@@ -607,6 +580,10 @@ def change_group_attendance_backend(update_obj: Update, context: CallbackContext
             status = ' / '.join([entry[1], entry[1]])
         else:
             status = entry[1].strip()
+            # Check that there is only 1 /. This is bad, because it's hardcoded, not according to numdailyreports
+            if status.count('/') > 1:
+                update_obj.message.reply_text(f"Regarding user {entry[0]}: Status invalid (more than 1 /)")
+                continue
             # Check that each status has something said
             if not min([len(value.strip()) for value in status.split('/')]):
                 update_obj.message.reply_text(f"Regarding user {entry[0]}: Enter a status!")
@@ -619,9 +596,6 @@ def change_group_attendance_backend(update_obj: Update, context: CallbackContext
                 # Gets the values of all
                 status = [value.strip().upper() for value in status.split('/')]
 
-                # You need to update the date to make it correct. It can be either today or tomorrow.
-                # For now, implementation is today. What this does is create one entry for each day, for each
-                # time period. All of them then get updated at once using executemany.
                 # This implementation can potentially be improved
                 # Add functionality to only insert if the days are not weekends;
                 # this has to be done in Python not SQLite
@@ -751,7 +725,7 @@ def get_single_user_attendance_backend(group_id: int, user_id: int, start_date: 
 def represent_date(date_str) -> str:
     # If the date is a datetime
     if type(date_str) == datetime.date:
-        return date_str.strftime("%d%m%Y")
+        return date_str.strftime("%d%m%y")
 
     # If the date is a string
     year, month, day = date_str.split('-')

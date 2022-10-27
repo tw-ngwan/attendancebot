@@ -1,6 +1,6 @@
 """Hidden developer functions. Mainly for debugging. Functions here are NOT shown to the general public"""
 from telegram import Update
-from telegram.ext import CallbackContext, ConversationHandler
+from telegram.ext import CallbackContext, ConversationHandler, Updater
 import settings
 import os
 from data import DATABASE_URL
@@ -70,8 +70,12 @@ def broadcast_follow_up(update_obj: Update, context: CallbackContext):
 # Backend function for broadcasting message to everyone
 def broadcast_backend(update_obj: Update, context: CallbackContext, message: str):
     chat_ids = get_all_admin_chat_ids()
+    dev_chat_id = update_obj.message.chat_id
     for chat_id in chat_ids:
-        context.bot.send_message(chat_id=chat_id, text=message)
+        try:
+            context.bot.send_message(chat_id=chat_id, text=message)
+        except Exception as e:
+            context.bot.send_message(chat_id=dev_chat_id, text=f"Unable to send message to {chat_id}. Exception:\n{e}")
 
 
 # For broadcasting message out to developers
@@ -86,13 +90,18 @@ def developer_sql_console(update_obj: Update, context: CallbackContext):
     if not verify_developer_follow_up_password(update_obj, context):
         return ConversationHandler.END
 
-    update_obj.message.reply_text("Type out your SQL commands to be executed exactly (without the ;)")
+    update_obj.message.reply_text("Type out your SQL commands to be executed exactly (without the ;). Type OK to exit")
     return settings.SECOND
 
 
 # For getting SQL console for developer use
 def developer_sql_console_follow_up(update_obj: Update, context: CallbackContext):
     chat_id, message = get_admin_reply(update_obj, context)
+    # This would allow me to keep sending prompts without having to reverify
+    if message.strip().lower() == 'ok':
+        update_obj.message.reply_text("SQL executed. Exiting...")
+        return ConversationHandler.END
+
     with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
             try:
@@ -104,8 +113,7 @@ def developer_sql_console_follow_up(update_obj: Update, context: CallbackContext
                 update_obj.message.reply_text("An exception has occured")
                 update_obj.message.reply_text(str(e))
 
-    update_obj.message.reply_text("SQL executed. Exiting...")
-    return ConversationHandler.END
+    return settings.SECOND
 
 
 # Gets all unique chat_ids inside the group
