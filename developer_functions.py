@@ -9,6 +9,7 @@ import psycopg2
 
 
 DEVELOPER_GROUP_ID = 101
+id_to_send_to = {}
 
 
 # Note: All telegram functions here will start with verify_developer, and will call verify_developer_follow_up
@@ -83,6 +84,41 @@ def broadcast_to_developers_backend(update_obj: Update, context: CallbackContext
     developer_ids = get_all_developer_chat_ids()
     for developer_id in developer_ids:
         context.bot.send_message(chat_id=developer_id, text=message)
+
+
+# Sends message out to users
+def send_message(update_obj: Update, context: CallbackContext):
+    # Verifies developer
+    if not verify_developer_follow_up_password(update_obj, context):
+        return ConversationHandler.END
+
+    update_obj.message.reply_text("Type the user chat_id into the field")
+    return settings.SECOND
+
+
+# Gets the id of the user you want to send the messages to
+def send_message_get_id(update_obj: Update, context: CallbackContext):
+    chat_id, message = get_admin_reply(update_obj, context)
+    try:
+        user_id = int(message)
+        id_to_send_to[chat_id] = user_id
+        update_obj.message.reply_text("Type in the message you want to send")
+        return settings.THIRD
+    except ValueError:
+        update_obj.message.reply_text("Invalid user id, message unable to be sent")
+        return ConversationHandler.END
+
+
+# Actually sends the message
+def send_message_follow_up(update_obj: Update, context: CallbackContext):
+    chat_id, message = get_admin_reply(update_obj, context)
+    try:
+        user_id = id_to_send_to[chat_id]
+        context.bot.send_message(chat_id=user_id, text=message)
+        update_obj.message.reply_text("Your message has been sent")
+    except Exception as e:
+        update_obj.message.reply_text(f"Unable to send message: {str(e)}")
+    return ConversationHandler.END
 
 
 # For getting SQL console for developer use

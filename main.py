@@ -306,6 +306,15 @@ def main():
         },
         fallbacks=[]
     )
+    send_message_handler = ConversationHandler(
+        entry_points=[CommandHandler('sendmessage', verify_developer)],
+        states={
+            settings.FIRST: [MessageHandler(Filters.text, send_message)],
+            settings.SECOND: [MessageHandler(Filters.text, send_message_get_id)],
+            settings.THIRD: [MessageHandler(Filters.text, send_message_follow_up)]
+        },
+        fallbacks=[]
+    )
 
     tutorial_handler = ConversationHandler(
         entry_points=[CommandHandler('tutorial', tutorial)],
@@ -358,7 +367,7 @@ def main():
 
                     feedback_handler,
 
-                    broadcast_handler, developer_sql_handler,
+                    broadcast_handler, developer_sql_handler, send_message_handler
                     ]
 
     for handler in all_handlers:
