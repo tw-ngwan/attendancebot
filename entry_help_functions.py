@@ -8,6 +8,8 @@ import datetime
 from dateutil import tz
 from backend_implementations import get_day_group_attendance, get_admin_reply
 from developer_functions import get_all_developer_chat_ids
+from entry_group_functions import create_group
+from state_group_functions import create_group_follow_up, set_username
 import psycopg2
 from data import DATABASE_URL
 
@@ -133,3 +135,47 @@ def feedback_follow_up(update_obj: Update, context: CallbackContext):
     else:
         update_obj.message.reply_text("Your feedback has been sent to the developers. Thank you!")
         return ConversationHandler.END
+
+
+# Tutorial functions: This will be long
+def tutorial(update_obj: Update, context: CallbackContext):
+    update_obj.message.reply_text("Welcome to the tutorial! Let's get you started, shall we? ")
+    update_obj.message.reply_text("The bot tracks attendance and events in the format of groups of users. "
+                                  "Let's start by creating a group! Call the /creategroup function, and follow "
+                                  "the instructions given!")
+    update_obj.message.reply_text("To break out of the tutorial at any time, send OK")
+    return settings.FIRST
+
+
+def tutorial_create_group(update_obj: Update, context: CallbackContext):
+    chat_id, message = get_admin_reply(update_obj, context)
+    if message.strip().lower() == 'ok':
+        update_obj.message.reply_text("Exiting tutorial...")
+        return ConversationHandler.END
+    if message.strip() != '/creategroup':
+        update_obj.message.reply_text("Create a group first with /creategroup!")
+        return settings.FIRST
+
+    create_group(update_obj, context)
+    return settings.SECOND
+
+
+def tutorial_create_group_follow_up(update_obj: Update, context: CallbackContext):
+    chat_id, message = get_admin_reply(update_obj, context)
+    if message.strip().lower() == 'ok':
+        update_obj.message.reply_text("Exiting tutorial...")
+        return ConversationHandler.END
+    create_group_follow_up(update_obj, context)
+    return settings.THIRD
+
+
+def tutorial_create_group_set_username_follow_up(update_obj: Update, context: CallbackContext):
+    chat_id, message = get_admin_reply(update_obj, context)
+    if message.strip().lower() == 'ok':
+        update_obj.message.reply_text("Exiting tutorial...")
+        return ConversationHandler.END
+    set_username(update_obj, context)
+    update_obj.message.reply_text("Great, you have set your username! Now, let's start by adding users into the "
+                                  "group. Users are just people whose attendance will be tracked. "
+                                  "Without further ado, let's go! Type /addusers to start")
+    return ConversationHandler.END
