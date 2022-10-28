@@ -4,7 +4,7 @@ from telegram import Update
 from telegram.ext import CallbackContext, ConversationHandler
 import settings
 import datetime
-from backend_implementations import get_admin_reply, check_valid_datetime, \
+from backend_implementations import get_admin_reply, check_valid_date, \
     get_day_group_attendance, change_group_attendance_backend, get_intended_users, get_single_user_attendance_backend, \
     convert_rank_to_id, get_group_size, get_child_groups, verify_group_and_role, update_admin_movements
 from entry_attendance_functions import _change_attendance_send_messages
@@ -40,7 +40,7 @@ def change_tomorrow_attendance_follow_up(update_obj: Update, context: CallbackCo
 # Gets the day that the user wants for changing attendance. For change_any_day_attendance
 def change_any_day_attendance_get_day(update_obj: Update, context: CallbackContext) -> int:
     chat_id, day = get_admin_reply(update_obj, context)
-    day_datetime = check_valid_datetime(day)
+    day_datetime = check_valid_date(day)
 
     # Check that date is entered in a valid format
     if not day_datetime:
@@ -70,7 +70,7 @@ def change_any_day_attendance_follow_up(update_obj: Update, context: CallbackCon
     # Gets the day that the user wants from settings, and then deletes it so that there is no duplicate of values
     day = settings.attendance_date_edit.pop(chat_id)
     # Converts it into a datetime object
-    day = check_valid_datetime(day)
+    day = check_valid_date(day)
     change_group_attendance_backend(update_obj, context, day, function='/changeany')
     return ConversationHandler.END
 
@@ -80,7 +80,7 @@ def get_specific_day_group_attendance_follow_up(update_obj: Update, context: Cal
     chat_id, date = get_admin_reply(update_obj, context)
     current_group = settings.current_group_id[chat_id]
     # Gets the date in the form of a datetime object
-    day_to_check = check_valid_datetime(date)
+    day_to_check = check_valid_date(date)
     if not day_to_check:
         update_obj.message.reply_text("Date entered in an invalid format")
         return ConversationHandler.END
@@ -122,13 +122,13 @@ def get_user_attendance_arbitrary_follow_up(update_obj: Update, context: Callbac
 
     # Gets the dates that the admin wants, and verifies that they are valid first.
     today = datetime.date.today()
-    end_date = check_valid_datetime(date_to_check=end_date, date_compared=today, after_date=False)  # Check this condition
+    end_date = check_valid_date(date_to_check=end_date, date_compared=today, after_date=False)  # Check this condition
     if not end_date:
         update_obj.message.reply_text("End date entered incorrectly! Refer to above to see how to enter dates! "
                                       "The end date must be today or before. ")
         return ConversationHandler.END
 
-    start_date = check_valid_datetime(date_to_check=start_date, date_compared=end_date, after_date=False)
+    start_date = check_valid_date(date_to_check=start_date, date_compared=end_date, after_date=False)
     if not start_date:
         update_obj.message.reply_text("Start date entered incorrectly! Refer to above to see how to enter dates! "
                                       "The start date must be before the end date. ")
@@ -179,13 +179,13 @@ def get_all_users_attendance_arbitrary_follow_up(update_obj: Update, context: Ca
 
     # Gets the dates that the admin wants, and verifies that they are valid first.
     today = datetime.date.today()
-    end_date = check_valid_datetime(date_to_check=end_date, date_compared=today, after_date=False)
+    end_date = check_valid_date(date_to_check=end_date, date_compared=today, after_date=False)
     if not end_date:
         update_obj.message.reply_text("End date entered incorrectly! Refer to above to see how to enter dates! "
                                       "The end date must be today or before. ")
         return ConversationHandler.END
 
-    start_date = check_valid_datetime(date_to_check=start_date, date_compared=end_date, after_date=False)
+    start_date = check_valid_date(date_to_check=start_date, date_compared=end_date, after_date=False)
     if not start_date:
         update_obj.message.reply_text("Start date entered incorrectly! Refer to above to see how to enter dates! "
                                       "The start date must be before the end date. ")

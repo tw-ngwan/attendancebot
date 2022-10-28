@@ -53,6 +53,7 @@ from state_group_functions import create_group_follow_up, enter_group_follow_up,
 from state_user_functions import add_user_follow_up, remove_user_verification, remove_user_follow_up, \
     edit_user_follow_up, change_group_ordering_follow_up, change_user_group_get_initial, change_user_group_get_final, \
     change_user_group_follow_up
+from events_functions import *
 from developer_functions import *
 
 # Getting the API_KEY
@@ -282,6 +283,36 @@ def main():
         fallbacks=[]
     )
 
+    # Events functions
+    start_event_handler = ConversationHandler(
+        entry_points=[CommandHandler('startevent', start_event)],
+        states={
+            settings.FIRST: [MessageHandler(Filters.text, start_event_get_event)],
+            settings.SECOND: [MessageHandler(Filters.text, start_event_get_end_time)],
+            settings.THIRD: [MessageHandler(Filters.text, start_event_follow_up)],
+            settings.FOURTH: [MessageHandler(Filters.text, start_new_event_get_name)]
+        },
+        fallbacks=[]
+    )
+    join_event_handler = ConversationHandler(
+        entry_points=[CommandHandler('joinevent', join_event)],
+        states={
+            settings.FIRST: [MessageHandler(Filters.text, join_event_get_password)],
+            settings.SECOND: [MessageHandler(Filters.text, join_event_verify_user_password)],
+            settings.THIRD: [MessageHandler(Filters.text, join_group_follow_up)]
+        },
+        fallbacks=[]
+    )
+    get_event_handler = ConversationHandler(
+        entry_points=[CommandHandler('getevent', join_event)],
+        states={
+            settings.FIRST: [MessageHandler(Filters.text, get_event)]
+        },
+        fallbacks=[]
+    )
+
+
+    # Developer functions and others
     feedback_handler = ConversationHandler(
         entry_points=[CommandHandler('feedback', feedback)],
         states={
@@ -363,6 +394,8 @@ def main():
                     get_all_users_attendance_month_handler, get_all_users_attendance_arbitrary_handler,
                     change_today_attendance_handler, change_tomorrow_attendance_handler,
                     change_any_day_attendance_handler,
+
+                    start_event_handler, join_event_handler, get_event_handler,
 
                     feedback_handler,
 

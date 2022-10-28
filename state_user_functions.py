@@ -132,48 +132,6 @@ def remove_user_follow_up(update_obj: Update, context: CallbackContext) -> int:
                 ranks_to_update
             )
 
-    # This is the old delete function, which removes all users entirely. The current function
-    # instead just deactivates the users, but keeps their data
-    # # Now, we remove the users from all tables concerned (attendance, users)
-    # with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
-    #     with con.cursor() as cur:
-    #         # First, we get the ranks of the deleted users
-    #         cur.execute(
-    #             """
-    #             SELECT rank
-    #               FROM users
-    #              WHERE id = ANY(%s)""",
-    #             (user_ids_for_parsing,)
-    #         )
-    #         ranks = cur.fetchall()
-    #         ranks.sort(reverse=True)
-    #         cur.executemany(
-    #             """
-    #             DELETE FROM attendance
-    #             WHERE user_id = %s""",
-    #             user_ids
-    #         )
-    #         cur.executemany(
-    #             """
-    #             DELETE FROM users
-    #             WHERE id = %s""",
-    #             user_ids
-    #         )
-    #
-    #         ranks_to_update = [(current_group, rank) for rank in ranks]
-    #         # Updating original ranks
-    #         cur.executemany(
-    #             """
-    #             UPDATE users
-    #                SET rank = rank - 1
-    #              WHERE group_id = %s
-    #                AND rank > %s""",
-    #             ranks_to_update
-    #         )
-    #
-    #         # Save changes
-    #         con.commit()
-
     # Update that users are removed
     update_admin_movements(chat_id, group_id=current_group, function='/removeusers', admin_text=user_text)
 

@@ -38,7 +38,9 @@ def start(update_obj: Update, context: CallbackContext) -> ConversationHandler.E
                                   "Every day, this bot will update you with the attendance of all groups you are "
                                   "a part of. You can edit your attendance with /changemyattendance \n"
                                   "Please key in /help for a list of useful functions, or if you want to get a full "
-                                  "list of functions, type /helpfull. Else, create your first group now with "
+                                  "list of functions, type /helpfull. If this is your first time using the bot, "
+                                  "it is highly recommended that you start with a tutorial. Type /tutorial. "
+                                  "Else, create your first group now with "
                                   "/creategroup, or join a group with /joingroup! "
                                   )
 

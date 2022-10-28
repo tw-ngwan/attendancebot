@@ -6,6 +6,8 @@ attendance_date_edit = {}  # For change_any_day_attendance_get_day in state_atte
 group_to_join = {}  # For join_group_get_group_code in state_group_functions
 merge_group_storage = {}  # For merge_group functions in entry_group_functions and state_group_functions
 change_user_group_storage = {}  # For change_user_group functions in entry_user_functions and state_user_functions
+event_tracker_storage = {}  # For tracking events
+event_joining_tracker_storage = {}  # For tracking events that are joined
 OBSERVER, MEMBER, ADMIN = "Observer", "Member", "Admin"
 FIRST, SECOND, THIRD, FOURTH, FIFTH, SIXTH, SEVENTH, EIGHTH, NINTH, TENTH, ELEVENTH, TWELFTH, THIRTEENTH = range(13)
 FOURTEENTH, FIFTEENTH, SIXTEENTH, SEVENTEENTH, EIGHTEENTH, NINETEENTH, TWENTIETH, TWENTYFIRST = range(13, 21)
@@ -29,6 +31,16 @@ class ChangeUserGroups:
         self.initial_group = initial_group
         self.final_group = None
         self.users = []
+
+
+class Event:
+
+    def __init__(self, event_id=None, event_name=None, event_end=None, event_code=None, event_password=None):
+        self.event_id = event_id
+        self.event_name = event_name
+        self.event_end = event_end
+        self.event_code = event_code
+        self.event_password = event_password
 
 
 def init():
@@ -68,6 +80,10 @@ Here is a walkthrough of what each of the functions will do, and your level need
 /changetmr: Changes the attendance status of any group members of group you are currently in, for next day (Member)
 /get: Sends a message with the attendance status of all group members (and subgroup members) for current day (Observer)
 /gettmr: Sends a message with the attendance status of all group members (and subgroup members) for next day (Observer)
+
+/joinevent: Joins an event, started either by your group or parent group(s) (Member)
+
+/feedback: Sends feedback to the developers (None) 
 
 To perform a function, call /enter first to enter a group. Your actions will be localized within the group. 
 """
@@ -110,6 +126,10 @@ Here is a walkthrough of what each of the functions will do, and your level need
 /getuserany: Sends a message with the attendance status of a user over any period of time (Member)
 /getallusersmonth: Sends a message with the attendance status of all users in the group over the past month (Admin)
 /getallusersany: Sends a message with the attendance status of all users in the group over any period of time (Admin)
+
+/startevent: Starts an event (Member)
+/joinevent: Joins an event, started either by your group or parent group(s) (Member)
+/getevent: Gets details of a current event (Member) 
 
 /feedback: Sends feedback to the developers (None) 
 

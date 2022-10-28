@@ -23,16 +23,7 @@ def generate_random_password(length=12, iterations=1) -> list[str]:
 # Generates a random, unique group code
 def generate_random_group_code() -> str:
     """Generates a random, unique group code"""
-    # How this works:
-    # I have a database of 100,000 group codes stored in a database (shelve), along with the current_group_number
-    # Whenever a new group is created, the next group code in line will be used, to ensure that it remains unique.
-    # Thus, this allows for O(1) lookup and generation of the group code
     return ''.join([random.choice(''.join([ascii_uppercase])) for _ in range(8)])
-    # with shelve.open('groups.db') as s:
-    #     group_code = s['group_codes'][s['current_group']]
-    #     s['current_group'] += 1
-    #     s.sync()
-    # return group_code
 
 
 # Gets the user's reply
@@ -212,7 +203,7 @@ def reply_non_admin(update_obj: Update, context: CallbackContext, role: str = se
 
 
 # Checks if a date given is valid. When checking after or before, inclusive of the current day
-def check_valid_datetime(date_to_check: str, date_compared: datetime.date = None, after_date: bool = True):
+def check_valid_date(date_to_check: str, date_compared: datetime.date = None, after_date: bool = True):
     """Checks if a date given is valid, and if compared with another date, whether it is also after or before the date
     (User specified)"""
 
@@ -260,6 +251,16 @@ def check_valid_datetime(date_to_check: str, date_compared: datetime.date = None
 
     # If all conditions that have been checked are ok, then return the final_date to be used
     return final_date
+
+
+# Code that simply checks if a time is valid
+def check_valid_time(time_to_check: str):
+    try:
+        timing = datetime.datetime.strptime(time_to_check, '%H%M')
+    except:
+        return False
+    else:
+        return timing
 
 
 # Gets group's attendance on a certain day
@@ -558,7 +559,7 @@ def change_group_attendance_backend(update_obj: Update, context: CallbackContext
 
             final_date = final_date.strip()
 
-            final_date = check_valid_datetime(date_to_check=final_date, date_compared=day, after_date=True)
+            final_date = check_valid_date(date_to_check=final_date, date_compared=day, after_date=True)
             if not final_date:
                 update_obj.message.reply_text(f"Regarding user {entry[0]}: Date entered in an invalid format. "
                                               f"Date must also be after the day's date, "
@@ -826,6 +827,34 @@ def get_group_id_from_button(message):
     return group_id, group_name
 
 
+def get_event_id_from_button(message):
+    message = message.strip()
+    event_code = 'x'
+    for i in range(len(message) - 2, -1, -1):
+        if message[i] == '(':
+            event_code = message[i + 1:len(message) - 1]
+            break
+
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
+        with con.cursor() as cur:
+            cur.execute(
+                """
+                SELECT parent_id, event_name 
+                  FROM events 
+                 WHERE event_code = %s
+                   AND parent_id = id
+                """, (event_code, )
+            )
+            events = cur.fetchall()
+            if not events:
+                return False, False
+
+        event_id, event_name = events[0][0], events[0][1]
+
+    return event_id, event_name
+
+
+
 # Checks that the pairs of users entered is correct
 def get_intended_user_swap_pairs(message, group_id=None):
     message = message.strip()
@@ -939,6 +968,18 @@ def get_child_groups(group_id):
     return group_ids
 
 
+def get_all_child_and_subchild_groups(group_id, groups=None):
+    if groups is None:
+        groups = []
+    group_ids = get_child_groups(group_id)
+    for group in group_ids:
+        groups.append(group)
+        get_all_child_and_subchild_groups(group_id, groups=groups)
+
+    print(groups)
+    return groups
+
+
 # Gets the superparent group of a group (disjoint set data structure implementation)
 # This is used in create_group to ensure that no loops are formed in a tree: If two groups belong to two
 # superparent groups, then no loop will be formed
@@ -958,3 +999,103 @@ def get_superparent_group(group_id):
                     return group_id
                 group_id = parent_id
 
+
+# Functions for events
+def get_past_group_events(group_id):
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
+        with con.cursor() as cur:
+            cur.execute(
+                """
+                SELECT DISTINCT event_name, event_code 
+                  FROM events 
+                 WHERE group_id = %s
+                """, (group_id, )
+            )
+            events = cur.fetchall()
+    return events
+
+
+# Gets events that are currently ongoing (DateEnd is after current time)
+def get_current_group_events(group_id):
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
+        with con.cursor() as cur:
+            cur.execute(
+                """
+                SELECT DISTINCT event_name, event_code 
+                FROM events 
+                WHERE group_id = %s 
+                AND DateEnd > CURRENT_TIMESTAMP
+                """, (group_id, )
+            )
+            events = cur.fetchall()
+    return events
+
+
+# Backend for getting group events
+def get_group_events_backend(update_obj: Update, context: CallbackContext, event_id: int, group_id: int):
+
+    # First, we get data about the
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
+        with con.cursor() as cur:
+            cur.execute(
+                """
+                SELECT event_name, DateStart, DateEnd
+                  FROM events
+                 WHERE event_id = %s
+                """, (event_id, )
+            )
+            event_info = cur.fetchall()
+            if not event_info:
+                update_obj.message.reply_text("An error occurred when trying to use the event_id!")
+                return
+
+            event_name, event_start, event_end = event_info[0]
+
+    event_message_beginning = [f"*Participants in {event_name} from {event_start} to {event_end}:*", ""]
+    event_message_body, num_members = get_group_events_backend_recursive(event_id, group_id,
+                                                                         num_members=0, event_message_body=[])
+    event_message_summary = [f"Total participants: {num_members}", ""]
+
+    message = '\n'.join(event_message_beginning + [''] + event_message_summary + [''] + event_message_body)
+    update_obj.message.reply_text(message)
+
+
+# Recursive implementation of getting events, for all child groups
+def get_group_events_backend_recursive(event_id: int, group_id: int, num_members: int, event_message_body: list):
+    # First, we find the child groups of the group
+    group_ids = get_child_groups(group_id)
+    current_event_message_body, num_members = get_group_events_backend_backend(event_id, group_id, num_members)
+    event_message_body += current_event_message_body
+    event_message_body.append('')
+
+    # Now, we repeat for all child groups
+    for id_val in group_ids:
+        event_message_body, num_members = get_group_events_backend_recursive(event_id, id_val, num_members,
+                                                                             event_message_body)
+
+    return event_message_body, num_members
+
+
+# Backend function for getting group events
+def get_group_events_backend_backend(event_id: int, group_id: int, num_members: int):
+
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
+        with con.cursor() as cur:
+            cur.execute(
+                """
+                SELECT users.Name, events_users.TimeJoined
+                  FROM events_users 
+                  JOIN users 
+                  ON users.id = events_users.user_id 
+                 WHERE events_users.event_id = %s 
+                   AND events_users.group_id = %s
+                """, (event_id, group_id)
+            )
+            data = cur.fetchall()
+            if not data:
+                return []
+    current_message = []
+    for val in data:
+        num_members += 1
+        current_message.append(f"{num_members}) {val[0]} - {val[1]}")
+    return current_message, num_members
