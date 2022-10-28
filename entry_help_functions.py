@@ -504,8 +504,8 @@ def tutorial_new_group_change_attendance_fail(update_obj: Update, context: Callb
                                   "differentiate between users and ensure security of your group. To become a Member, "
                                   "you can call /uprank and enter the member password, but we're not going to "
                                   "do that. ")
-    update_obj.message.reply_text("Let's say we want to get the attendance of our Test Group just now. We can do that "
-                                  "by now entering that group. Use /enter to go back into the Test Group!")
+    update_obj.message.reply_text("Let's say we want to get the attendance of our Trial Group just now. We can do that "
+                                  "by now entering that group. Use /enter to go back into the Trial Group!")
     return settings.TWENTYTHIRD
 
 
@@ -519,7 +519,7 @@ def tutorial_enter_group(update_obj: Update, context: CallbackContext):
         return settings.TWENTYTHIRD
 
     enter_group(update_obj, context)
-    update_obj.message.reply_text("Choose your Test Group (select the button with that group)")
+    update_obj.message.reply_text("Choose your Trial Group (select the button with that group)")
     return settings.TWENTYFOURTH
 
 
@@ -528,7 +528,7 @@ def tutorial_enter_group_follow_up(update_obj: Update, context: CallbackContext)
     if message.strip().lower() == 'ok':
         update_obj.message.reply_text("Exiting tutorial...")
         return ConversationHandler.END
-    if 'test group' not in message.strip().lower():
+    if 'trial group' not in message.strip().lower():
         update_obj.message.reply_text("Select the correct group!")
         return settings.TWENTYFOURTH
 
