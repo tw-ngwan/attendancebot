@@ -299,7 +299,7 @@ def main():
         states={
             settings.FIRST: [MessageHandler(Filters.text, join_event_get_password)],
             settings.SECOND: [MessageHandler(Filters.text, join_event_verify_user_password)],
-            settings.THIRD: [MessageHandler(Filters.text, join_group_follow_up)]
+            settings.THIRD: [MessageHandler(Filters.text, join_event_follow_up)]
         },
         fallbacks=[]
     )
