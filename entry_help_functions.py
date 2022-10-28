@@ -125,10 +125,10 @@ def feedback_follow_up(update_obj: Update, context: CallbackContext):
         for developer in developer_ids:
             context.bot.send_message(chat_id=developer, message=f"Feedback from {username} (chat id: {chat_id}):")
             context.bot.send_message(chat_id=developer, message=message)
-    except Exception:
+    except Exception as e:
         update_obj.message.reply_text("Sorry, there has been an issue... Your feedback can't get through "
                                       "for now, please try again later!")
-        print(Exception)
+        print(str(e))
         return ConversationHandler.END
     else:
         update_obj.message.reply_text("Your feedback has been sent to the developers. Thank you!")
