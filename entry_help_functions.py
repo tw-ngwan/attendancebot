@@ -178,4 +178,14 @@ def tutorial_create_group_set_username_follow_up(update_obj: Update, context: Ca
     update_obj.message.reply_text("Great, you have set your username! Now, let's start by adding users into the "
                                   "group. Users are just people whose attendance will be tracked. "
                                   "Without further ado, let's go! Type /addusers to start")
-    return ConversationHandler.END
+    return settings.FOURTH
+
+
+def tutorial_add_users(update_obj: Update, context: CallbackContext):
+    chat_id, message = get_admin_reply(update_obj, context)
+    if message.strip().lower() == 'ok':
+        update_obj.message.reply_text("Exiting tutorial...")
+        return ConversationHandler.END
+    if message.strip() != '/addusers':
+        update_obj.message.reply_text("Add users first with /addusers!")
+        return settings.FOURTH

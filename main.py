@@ -39,7 +39,7 @@ from entry_attendance_functions import get_today_group_attendance, get_tomorrow_
 from entry_group_functions import create_group, enter_group, leave_group, current_group, delete_group, merge_groups, \
     join_existing_group, quit_group, change_group_title, uprank, get_group_passwords, set_username_precursor, \
     get_group_history
-from entry_help_functions import start, user_help, user_help_full, feedback, feedback_follow_up
+from entry_help_functions import *
 from entry_user_functions import add_users, get_users, remove_users, edit_users, change_group_ordering, \
     change_user_group
 from state_attendance_functions import change_today_attendance_follow_up, change_tomorrow_attendance_follow_up, \
@@ -307,8 +307,19 @@ def main():
         fallbacks=[]
     )
 
+    tutorial_handler = ConversationHandler(
+        entry_points=[CommandHandler('tutorial', tutorial)],
+        states={
+            settings.FIRST: [MessageHandler(Filters.text, tutorial_create_group)],
+            settings.SECOND: [MessageHandler(Filters.text, tutorial_create_group_follow_up)],
+            settings.THIRD: [MessageHandler(Filters.text, tutorial_create_group_set_username_follow_up)],
+            settings.FOURTH: [MessageHandler(Filters.text, tutorial_add_users)],
+        },
+        fallbacks=[]
+    )
+
     global dispatcher
-    all_handlers = [start_handler, help_handler, help_full_handler,
+    all_handlers = [start_handler, help_handler, help_full_handler, tutorial_handler,
                     create_group_handler, enter_group_handler, leave_group_handler, current_group_handler,
                     delete_group_handler, merge_groups_handler, join_groups_handler, quit_group_handler,
                     change_group_title_handler, get_group_passwords_handler, uprank_handler, set_username_handler,
