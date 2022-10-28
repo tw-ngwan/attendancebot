@@ -544,24 +544,10 @@ def tutorial_enter_group_get_attendance(update_obj: Update, context: CallbackCon
         return settings.TWENTYFIFTH
 
     get_today_group_attendance(update_obj, context)
-    update_obj.message.reply_text("Well done. We have so many other functions we want to show you, but there's "
+    update_obj.message.reply_text("Well done! We have so many other functions we want to show you, but there's "
                                   "no time for that. To get a list of helpful functions, type /help. To get a "
-                                  "full list of functions that we have, type /helpfull. Let's try getting a full list "
-                                  "of functions now, with /helpfull!")
-    return settings.TWENTYSIXTH
-
-
-def tutorial_help_full(update_obj: Update, context: CallbackContext):
-    chat_id, message = get_admin_reply(update_obj, context)
-    if message.strip().lower() == 'ok':
-        update_obj.message.reply_text("Exiting tutorial...")
-        return ConversationHandler.END
-    if message.strip().lower() != '/helpfull':
-        update_obj.message.reply_text("Get the full list of functions with /helpfull!")
-        return settings.TWENTYSIXTH
-
-    user_help_full(update_obj, context)
-    update_obj.message.reply_text("Well done! You have come to the end of the tutorial. Another potentially useful "
+                                  "full list of functions that we have, type /helpfull. ")
+    update_obj.message.reply_text("Good job! You have come to the end of the tutorial. Another potentially useful "
                                   "function that you may want to use is /getgrouphistory, which gets the history of "
                                   "everything that's been done in the group. This helps you to track who has done "
                                   "which changes, in case anything goes wrong. We also allow for parent group "

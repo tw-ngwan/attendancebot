@@ -343,8 +343,7 @@ def main():
             settings.TWENTYSECOND: [MessageHandler(Filters.text, tutorial_new_group_change_attendance_fail)],
             settings.TWENTYTHIRD: [MessageHandler(Filters.text, tutorial_enter_group)],
             settings.TWENTYFOURTH: [MessageHandler(Filters.text, tutorial_enter_group_follow_up)],
-            settings.TWENTYFIFTH: [MessageHandler(Filters.text, tutorial_enter_group_get_attendance)],
-            settings.TWENTYSIXTH: [MessageHandler(Filters.text, tutorial_help_full)]
+            settings.TWENTYFIFTH: [MessageHandler(Filters.text, tutorial_enter_group_get_attendance)]
         },
         fallbacks=[]
     )
