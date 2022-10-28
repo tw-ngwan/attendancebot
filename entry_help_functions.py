@@ -480,10 +480,7 @@ def tutorial_join_new_group_get_attendance(update_obj: Update, context: Callback
         update_obj.message.reply_text("Get attendance first with /get!")
         return settings.TWENTYFIRST
 
-    get_attendance = get_today_group_attendance(update_obj, context)
-    if get_attendance < 0:
-        update_obj.message.reply_text("You have not set your username yet! Type /setusername to set it first!")
-        return settings.TWENTYFIRST
+    get_today_group_attendance(update_obj, context)
 
     update_obj.message.reply_text("Congratulations! Let's try changing attendance now. Use /change")
     return settings.TWENTYSECOND
