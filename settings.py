@@ -8,6 +8,8 @@ merge_group_storage = {}  # For merge_group functions in entry_group_functions a
 change_user_group_storage = {}  # For change_user_group functions in entry_user_functions and state_user_functions
 OBSERVER, MEMBER, ADMIN = "Observer", "Member", "Admin"
 FIRST, SECOND, THIRD, FOURTH, FIFTH, SIXTH, SEVENTH, EIGHTH, NINTH, TENTH, ELEVENTH, TWELFTH, THIRTEENTH = range(13)
+FOURTEENTH, FIFTEENTH, SIXTEENTH, SEVENTEENTH, EIGHTEENTH, NINETEENTH, TWENTIETH, TWENTYFIRST = range(13, 21)
+TWENTYSECOND, TWENTYTHIRD, TWENTYFOURTH, TWENTYFIFTH, TWENTYSIXTH, TWENTYSEVENTH = range(21, 27)
 
 
 # For storing of users when merging groups
@@ -32,6 +34,8 @@ class ChangeUserGroups:
 def init():
     global current_group_id, current_group_name
     global FIRST, SECOND, THIRD, FOURTH, FIFTH, SIXTH, SEVENTH, EIGHTH, NINTH, TENTH, ELEVENTH, TWELFTH, THIRTEENTH
+    global FOURTEENTH, FIFTEENTH, SIXTEENTH, SEVENTEENTH, EIGHTEENTH, NINETEENTH, TWENTIETH, TWENTYFIRST
+    global TWENTYSECOND, TWENTYTHIRD, TWENTYFOURTH, TWENTYFIFTH, TWENTYSIXTH, TWENTYSEVENTH
     global help_message, full_help_message
     global OBSERVER, MEMBER, ADMIN
     global attendance_date_edit
@@ -40,6 +44,8 @@ def init():
     current_group_id = defaultdict(lambda: None)
     current_group_name = defaultdict(lambda: None)
     FIRST, SECOND, THIRD, FOURTH, FIFTH, SIXTH, SEVENTH, EIGHTH, NINTH, TENTH, ELEVENTH, TWELFTH, THIRTEENTH = range(13)
+    FOURTEENTH, FIFTEENTH, SIXTEENTH, SEVENTEENTH, EIGHTEENTH, NINETEENTH, TWENTIETH, TWENTYFIRST = range(13, 21)
+    TWENTYSECOND, TWENTYTHIRD, TWENTYFOURTH, TWENTYFIFTH, TWENTYSIXTH, TWENTYSEVENTH = range(21, 27)
     attendance_date_edit = {}
     merge_group_storage = {}
     OBSERVER, MEMBER, ADMIN = "Observer", "Member", "Admin"
