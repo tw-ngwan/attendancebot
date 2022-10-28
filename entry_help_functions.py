@@ -123,8 +123,8 @@ def feedback_follow_up(update_obj: Update, context: CallbackContext):
     developer_ids = get_all_developer_chat_ids()  # This one you may want to change
     try:
         for developer in developer_ids:
-            context.bot.send_message(chat_id=developer, message=f"Feedback from {username} (chat id: {chat_id}):")
-            context.bot.send_message(chat_id=developer, message=message)
+            context.bot.send_message(chat_id=developer, text=f"Feedback from {username} (chat id: {chat_id}):")
+            context.bot.send_message(chat_id=developer, text=message)
     except Exception as e:
         update_obj.message.reply_text("Sorry, there has been an issue... Your feedback can't get through "
                                       "for now, please try again later!")
