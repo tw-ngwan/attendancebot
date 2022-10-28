@@ -128,5 +128,8 @@ def feedback_follow_up(update_obj: Update, context: CallbackContext):
     except Exception:
         update_obj.message.reply_text("Sorry, there has been an issue... Your feedback can't get through "
                                       "for now, please try again later!")
+        print(Exception)
+        return ConversationHandler.END
     else:
         update_obj.message.reply_text("Your feedback has been sent to the developers. Thank you!")
+        return ConversationHandler.END
