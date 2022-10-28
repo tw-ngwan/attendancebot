@@ -257,6 +257,7 @@ def check_valid_date(date_to_check: str, date_compared: datetime.date = None, af
 def check_valid_time(time_to_check: str):
     try:
         timing = datetime.datetime.strptime(time_to_check, '%H%M')
+        timing = datetime.time(hour=timing.hour, minute=timing.minute)
     except:
         return False
     else:
