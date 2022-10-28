@@ -55,6 +55,7 @@ Here is a walkthrough of what each of the functions will do, and your level need
 /start: Once you activate the bot, it will send you the attendance statuses of each group you're in every day. (None)
 /help: Gives you the list of commands available (None)
 /helpfull: Gives you the full list of commands available (None)
+/tutorial: Gives a tutorial to walk through the bot (None)
 
 /enter: Enters group to do stuff in the group (Observer)
 /current: Tells you the current group you are in, and None if not (Observer) 
@@ -76,6 +77,7 @@ Here is a walkthrough of what each of the functions will do, and your level need
 /start: Once you activate the bot, it will send you the attendance statuses of each group you're in every day. (None)
 /help: Gives you the list of commands available (None)
 /helpfull: Gives you the full list of commands available (None)
+/tutorial: Gives a tutorial to walk through the bot (None)
 
 /creategroup: Creates a group within your current group. Don't accidentally make subgroups! (None, Admin) 
 /enter: Enters group to do stuff in the group (Observer)
