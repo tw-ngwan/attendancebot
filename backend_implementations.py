@@ -1042,7 +1042,7 @@ def get_group_events_backend(update_obj: Update, context: CallbackContext, event
                 """
                 SELECT event_name, DateStart, DateEnd
                   FROM events
-                 WHERE event_id = %s
+                 WHERE id = %s
                 """, (event_id, )
             )
             event_info = cur.fetchall()
