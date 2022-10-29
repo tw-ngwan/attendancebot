@@ -1116,4 +1116,4 @@ def get_group_events_backend_backend(event_id: int, group_id: int, num_members: 
 
 
 def get_time_string_from_datetime(d: datetime.datetime) -> str:
-    return f"{d.day}{d.month}{str(d.year)[2:]} {d.hour}:{d.minute}:{d.second}"
+    return f"{d.day:02d}{d.month:02d}{str(d.year)[2:]} {d.hour:02d}:{d.minute:02d}:{d.second:02d}"
