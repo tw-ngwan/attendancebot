@@ -63,21 +63,28 @@ event_name TEXT NOT NULL,
 DateStart  TIMESTAMPTZ NOT NULL, 
 DateEnd    TIMESTAMPTZ NOT NULL, 
 event_code TEXT NOT NULL, 
+password   TEXT, 
 group_id   INTEGER NOT NULL, 
 FOREIGN KEY(parent_id) REFERENCES events(id), 
 FOREIGN KEY(group_id) REFERENCES groups(id)
 );
 
 CREATE TABLE IF NOT EXISTS events_users (
-id SERIAL PRIMARY KEY UNIQUE NOT NULL, 
-user_id INTEGER NOT NULL, 
-FOREIGN KEY(user_id) REFERENCES users(id)
+id         SERIAL PRIMARY KEY UNIQUE NOT NULL, 
+TimeJoined TIMESTAMPTZ NOT NULL, 
+user_id    INTEGER NOT NULL,
+group_id   INTEGER NOT NULL, 
+event_id   INTEGER NOT NULL, 
+FOREIGN KEY(user_id) REFERENCES users(id),
+FOREIGN KEY(event_id) REFERENCES events(id)
 );
 
 SELECT DISTINCT parent_id FROM events WHERE group_id = %s;
 SELECT parent_id FROM events WHERE event_code = %s AND parent_id = id;
 
-
+# Have some logic to check that DateEnd is after DateStart 
+INSERT INTO events (parent_id, event_name, DateStart, DateEnd, event_code, password, group_id) 
+VALUES ((SELECT MAX(id) + 1 FROM events), %s, CURRENT_TIMESTAMP, %s, %s, %s, %s)
 
 // Inserting new group 
 INSERT INTO groups (

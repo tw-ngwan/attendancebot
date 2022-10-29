@@ -88,8 +88,8 @@ def start_event_get_end_time(update_obj: Update, context: CallbackContext):
             update_obj.message.reply_text("Invalid date format!")
             return ConversationHandler.END
 
-    # Foresee that may face tz issues
-    event_end_time = datetime.datetime.combine(date, timing)
+    # Timezone specified to SG Time
+    event_end_time = datetime.datetime.combine(date, timing, tzinfo=datetime.timezone(datetime.timedelta(hours=8)))
     now = datetime.datetime.now()
     if event_end_time < now:
         update_obj.message.reply_text("Event end time has to be after current time!")
@@ -136,13 +136,20 @@ def start_event_follow_up(update_obj: Update, context: CallbackContext):
             # This is the argument tuple that we will use
             argument_tuple = [(event.event_id, event.event_name, event.event_end, event.event_code, password, group)
                               for group in child_groups]
+            # Makes the timezone correct first
+            cur.execute(
+                """
+                ALTER SESSION 
+                SET timezone TO 'Asia/Singapore'
+                """
+            )
             # Now, we add all of the events into the database. So all child groups can join the event
             cur.executemany(
                 """
                 INSERT INTO events
                 (parent_id, event_name, DateStart, DateEnd, event_code, password, group_id) 
                 VALUES 
-                (%s, %s, CURRENT_TIMESTAMP, %s, %s, %s, %s)
+                (%s, %s, CURRENT_TIMESTAMP(0), %s, %s, %s, %s)
                 """, argument_tuple
             )
 
@@ -276,12 +283,19 @@ def join_event_follow_up(update_obj: Update, context: CallbackContext):
     # Now, we insert each of the users into events_users
     with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
+            # Makes the timezone correct first
+            cur.execute(
+                """
+                ALTER SESSION 
+                SET timezone TO 'Asia/Singapore'
+                """
+            )
             cur.executemany(
                 """
                 INSERT INTO events_users 
                 (user_id, group_id, event_id, TimeJoined)
                 VALUES 
-                (%s, %s, %s, CURRENT_TIMESTAMP)
+                (%s, %s, %s, CURRENT_TIMESTAMP(0))
                 """, argument_tuple
             )
 
@@ -293,6 +307,7 @@ def join_event_follow_up(update_obj: Update, context: CallbackContext):
 
 
 # Gets current events
+# Has timezone problem. Needs to be resolved somehow
 def get_event(update_obj: Update, context: CallbackContext):
     """Note that this is settings.FIRST state already. Before this we call join_event, to join group"""
     chat_id, message = get_admin_reply(update_obj, context)
@@ -328,6 +343,7 @@ def get_event(update_obj: Update, context: CallbackContext):
 
     get_group_events_backend(update_obj, context, event_id=event_id, group_id=current_group)
     update_admin_movements(chat_id, group_id=current_group, function='/getevent', admin_text=event_name)
+    update_obj.message.reply_text("Data about event retrieved", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
 """Future implementations: 

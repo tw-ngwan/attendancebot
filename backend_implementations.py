@@ -1038,6 +1038,13 @@ def get_group_events_backend(update_obj: Update, context: CallbackContext, event
     # First, we get data about the
     with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
+            # Makes the timezone correct first
+            cur.execute(
+                """
+                ALTER SESSION 
+                SET timezone TO 'Asia/Singapore'
+                """
+            )
             cur.execute(
                 """
                 SELECT event_name, DateStart, DateEnd
@@ -1082,6 +1089,13 @@ def get_group_events_backend_backend(event_id: int, group_id: int, num_members: 
 
     with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
+            # Makes the timezone correct first
+            cur.execute(
+                """
+                ALTER SESSION 
+                SET timezone TO 'Asia/Singapore'
+                """
+            )
             cur.execute(
                 """
                 SELECT users.Name, events_users.TimeJoined
