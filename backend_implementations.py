@@ -1035,7 +1035,7 @@ def get_current_group_events(group_id):
 
 
 # Backend for getting group events
-def get_group_events_backend(update_obj: Update, context: CallbackContext, event_id: int, group_id: int):
+def get_group_events_backend(update_obj: Update, context: CallbackContext, event_parent_id: int, group_id: int):
 
     # First, we get data about the
     with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
@@ -1050,8 +1050,9 @@ def get_group_events_backend(update_obj: Update, context: CallbackContext, event
                 """
                 SELECT event_name, DateStart, DateEnd
                   FROM events
-                 WHERE id = %s
-                """, (event_id, )
+                 WHERE parent_id = %s
+                   AND group_id = %s
+                """, (event_parent_id, group_id)
             )
             event_info = cur.fetchall()
             if not event_info:
@@ -1062,7 +1063,7 @@ def get_group_events_backend(update_obj: Update, context: CallbackContext, event
 
     event_message_beginning = [f"*Participants in {event_name} from {get_time_string_from_datetime(event_start)} to "
                                f"{get_time_string_from_datetime(event_end)}:*", ""]
-    event_message_body, num_members = get_group_events_backend_recursive(event_id, group_id,
+    event_message_body, num_members = get_group_events_backend_recursive(event_parent_id, group_id,
                                                                          num_members=0, event_message_body=[])
     event_message_summary = [f"Total participants: {num_members}", ""]
 
@@ -1071,10 +1072,10 @@ def get_group_events_backend(update_obj: Update, context: CallbackContext, event
 
 
 # Recursive implementation of getting events, for all child groups
-def get_group_events_backend_recursive(event_id: int, group_id: int, num_members: int, event_message_body: list):
+def get_group_events_backend_recursive(event_parent_id: int, group_id: int, num_members: int, event_message_body: list):
     # First, we find the child groups of the group
     group_ids = get_child_groups(group_id)
-    current_event_message_body, num_members = get_group_events_backend_backend(event_id, group_id, num_members)
+    current_event_message_body, num_members = get_group_events_backend_backend(event_parent_id, group_id, num_members)
     event_message_body += current_event_message_body
     event_message_body.append('')
 
@@ -1082,14 +1083,14 @@ def get_group_events_backend_recursive(event_id: int, group_id: int, num_members
     for id_val in group_ids:
         event_message_body.append(f"*{get_group_name_from_id(id_val)}*")
         event_message_body.append('')
-        event_message_body, num_members = get_group_events_backend_recursive(event_id, id_val, num_members,
+        event_message_body, num_members = get_group_events_backend_recursive(event_parent_id, id_val, num_members,
                                                                              event_message_body)
 
     return event_message_body, num_members
 
 
 # Backend function for getting group events
-def get_group_events_backend_backend(event_id: int, group_id: int, num_members: int):
+def get_group_events_backend_backend(event_parent_id: int, group_id: int, num_members: int):
 
     with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
@@ -1105,9 +1106,9 @@ def get_group_events_backend_backend(event_id: int, group_id: int, num_members: 
                   FROM events_users 
                   JOIN users 
                   ON users.id = events_users.user_id 
-                 WHERE events_users.event_id = %s 
+                 WHERE events_users.event_parent_id = %s 
                    AND events_users.group_id = %s
-                """, (event_id, group_id)
+                """, (event_parent_id, group_id)
             )
             data = cur.fetchall()
             if not data:

@@ -41,23 +41,8 @@ def start_event_get_event(update_obj: Update, context: CallbackContext):
         update_obj.message.reply_text("Invalid event, please try again!", reply_markup=ReplyKeyboardRemove())
         return ConversationHandler.END
 
-    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
-        with con.cursor() as cur:
-            cur.execute(
-                """
-                SELECT event_code FROM events 
-                WHERE id = %s
-                """, (event_id, )
-            )
-            event_code = cur.fetchall()
-            if not event_code:
-                update_obj.message.reply_text("Something went wrong while retrieving event code, please try again!")
-                return ConversationHandler.END
-            event_code = event_code[0][0]
-
-    # Stores the event id, event name, and event code
-    settings.event_tracker_storage[chat_id] = settings.Event(event_id=event_id, event_name=event_name,
-                                                             event_code=event_code)
+    # Stores the event name
+    settings.event_tracker_storage[chat_id] = settings.Event(event_name=event_name)
 
     _start_event_send_get_end_time_message(update_obj, context)
     return settings.SECOND
@@ -112,25 +97,22 @@ def start_event_follow_up(update_obj: Update, context: CallbackContext):
         password = message.strip()
 
     event = settings.event_tracker_storage[chat_id]
-    # This creates a new event code
-    if event.event_code is None:
-        event.event_code = generate_random_group_code()
+    event.event_code = generate_random_group_code()
 
     current_group = settings.current_group_id[chat_id]
-    # See if this can be optimized... we're checking event_id twice here
+
     with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
-            if event.event_id is None:
-                # This gets the next serial value (so the +1; 1 table value will be omitted)
-                cur.execute(
-                    """SELECT nextval(pg_get_serial_sequence('events', 'id')) + 1"""
-                )
-                event_id = cur.fetchall()
-                if not event_id or event_id[0][0] is None:
-                    event_id = 1
-                else:
-                    event_id = event_id[0][0]
-                event.event_id = event_id
+            # This gets the next serial value (so the +1; 1 table value will be omitted)
+            cur.execute(
+                """SELECT nextval(pg_get_serial_sequence('events', 'id')) + 1"""
+            )
+            event_id = cur.fetchall()
+            if not event_id or event_id[0][0] is None:
+                event_id = 1
+            else:
+                event_id = event_id[0][0]
+            event.event_id = event_id
 
             # We get all the child and subchild groups, including the parent group
             child_groups = get_all_child_and_subchild_groups(group_id=current_group, groups=[current_group])
@@ -240,7 +222,8 @@ def join_event_get_password(update_obj: Update, context: CallbackContext):
 
     # Store details about the event
     settings.event_joining_tracker_storage[chat_id] = settings.Event(event_id=event_id, event_name=event_name,
-                                                                     event_password=event_password)
+                                                                     event_password=event_password,
+                                                                     event_parent_id=event_parent_id)
 
     if event_password is None:
         update_obj.message.reply_text("Type in the numbers of the users you want to add to the event, "
@@ -280,9 +263,9 @@ def join_event_follow_up(update_obj: Update, context: CallbackContext):
 
     # Gets the user_ids
     user_ids = [convert_rank_to_id(current_group, rank) for rank in users]
-    event_id = settings.event_joining_tracker_storage[chat_id].event_id
+    event_parent_id = settings.event_joining_tracker_storage[chat_id].event_parent_id
 
-    argument_tuple = [(user_id, current_group, event_id) for user_id in user_ids]
+    argument_tuple = [(user_id, current_group, event_parent_id) for user_id in user_ids]
 
     # Now, we insert each of the users into events_users
     with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
@@ -296,7 +279,7 @@ def join_event_follow_up(update_obj: Update, context: CallbackContext):
             cur.executemany(
                 """
                 INSERT INTO events_users 
-                (user_id, group_id, event_id, TimeJoined)
+                (user_id, group_id, event_parent_id, TimeJoined)
                 VALUES 
                 (%s, %s, %s, CURRENT_TIMESTAMP(0))
                 """, argument_tuple
@@ -310,7 +293,6 @@ def join_event_follow_up(update_obj: Update, context: CallbackContext):
 
 
 # Gets current events
-# Has timezone problem. Needs to be resolved somehow
 def get_event(update_obj: Update, context: CallbackContext):
     """Note that this is settings.FIRST state already. Before this we call join_event, to join group"""
     chat_id, message = get_admin_reply(update_obj, context)
@@ -326,25 +308,7 @@ def get_event(update_obj: Update, context: CallbackContext):
         update_obj.message.reply_text("Invalid event, please try again!", reply_markup=ReplyKeyboardRemove())
         return ConversationHandler.END
 
-    # Get event_id
-    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
-        with con.cursor() as cur:
-            cur.execute(
-                """
-                SELECT id
-                  FROM events 
-                 WHERE parent_id = %s
-                 ORDER BY id DESC 
-                 LIMIT 1
-                 """, (event_parent_id, )
-            )
-            event_details = cur.fetchall()
-            if not event_details:
-                update_obj.message.reply_text("An error has occurred while retrieving group id, please try again!")
-                return ConversationHandler.END
-            event_id = event_details[0][0]
-
-    get_group_events_backend(update_obj, context, event_id=event_id, group_id=current_group)
+    get_group_events_backend(update_obj, context, event_parent_id=event_parent_id, group_id=current_group)
     update_admin_movements(chat_id, group_id=current_group, function='/getevent', admin_text=event_name)
     update_obj.message.reply_text("Data about event retrieved", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
@@ -388,7 +352,7 @@ def get_event_history_follow_up(update_obj: Update, context: CallbackContext):
             )
             cur.execute(
                 """
-                SELECT id
+                SELECT DISTINCT parent_id
                   FROM events 
                  WHERE event_code = %s
                    AND DateEnd = %s
@@ -399,9 +363,9 @@ def get_event_history_follow_up(update_obj: Update, context: CallbackContext):
                 update_obj.message.reply_text("Unable to find the event, sorry!")
                 return ConversationHandler.END
 
-            event_id = data[0][0]
+            event_parent_id = data[0][0]
 
-    get_group_events_backend(update_obj, context, event_id=event_id, group_id=current_group)
+    get_group_events_backend(update_obj, context, event_parent_id=event_parent_id, group_id=current_group)
     update_admin_movements(chat_id, group_id=current_group, function='/geteventhistory', admin_text=message)
     update_obj.message.reply_text("Data about event retrieved", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
