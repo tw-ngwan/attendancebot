@@ -121,8 +121,9 @@ def start_event_follow_up(update_obj: Update, context: CallbackContext):
     with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
             if event.event_id is None:
+                # This gets the next serial value (so the +1; 1 table value will be omitted)
                 cur.execute(
-                    """SELECT MAX(id) + 1 FROM events"""
+                    """SELECT nextval(pg_get_serial_sequence('events', 'id')) + 1"""
                 )
                 event_id = cur.fetchall()
                 if not event_id or event_id[0][0] is None:
