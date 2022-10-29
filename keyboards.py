@@ -46,7 +46,7 @@ def all_past_events_keyboards(group_id, extra_options=None):
         extra_options = []
 
     group_events = get_all_past_group_events_with_timestamp(group_id)
-    group_events_names = [[f"{event[0]} {get_time_string_from_datetime(event[1])} ({event[2]})"]
+    group_events_names = [[f"{event[0]} {get_time_string_from_datetime(event[2])} ({event[1]})"]
                           for event in group_events]
     for option in extra_options:
         group_events_names.append([option])
