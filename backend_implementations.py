@@ -977,7 +977,7 @@ def get_all_child_and_subchild_groups(group_id, groups=None):
     for group in group_ids:
         groups.append(group)
         print("Appending:", group)
-        get_all_child_and_subchild_groups(group_id, groups=groups)
+        get_all_child_and_subchild_groups(group, groups=groups)
 
     print(groups)
     return groups
