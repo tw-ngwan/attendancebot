@@ -369,7 +369,7 @@ def get_event_history_follow_up(update_obj: Update, context: CallbackContext):
 
     event_data = message.split()
     event_code = event_data[-1]
-    event_datetime = event_data[-2]
+    event_datetime = ' '.join([event_data[-3], event_data[-2]])
     event_code = event_code[1:len(event_code) - 1]
     event_datetime = get_datetime_from_time_string(event_datetime)
 
