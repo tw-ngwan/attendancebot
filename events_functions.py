@@ -139,7 +139,6 @@ def start_event_follow_up(update_obj: Update, context: CallbackContext):
             # Makes the timezone correct first
             cur.execute(
                 """
-                ALTER SESSION 
                 SET timezone TO 'Asia/Singapore'
                 """
             )
@@ -286,7 +285,6 @@ def join_event_follow_up(update_obj: Update, context: CallbackContext):
             # Makes the timezone correct first
             cur.execute(
                 """
-                ALTER SESSION 
                 SET timezone TO 'Asia/Singapore'
                 """
             )

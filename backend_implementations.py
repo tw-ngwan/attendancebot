@@ -1041,7 +1041,6 @@ def get_group_events_backend(update_obj: Update, context: CallbackContext, event
             # Makes the timezone correct first
             cur.execute(
                 """
-                ALTER SESSION 
                 SET timezone TO 'Asia/Singapore'
                 """
             )
@@ -1092,7 +1091,6 @@ def get_group_events_backend_backend(event_id: int, group_id: int, num_members: 
             # Makes the timezone correct first
             cur.execute(
                 """
-                ALTER SESSION 
                 SET timezone TO 'Asia/Singapore'
                 """
             )
