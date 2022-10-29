@@ -35,12 +35,14 @@ class ChangeUserGroups:
 
 class Event:
 
-    def __init__(self, event_id=None, event_name=None, event_end=None, event_code=None, event_password=None):
+    def __init__(self, event_id=None, event_name=None, event_end=None, event_code=None, event_password=None,
+                 event_parent_id=None):
         self.event_id = event_id
         self.event_name = event_name
         self.event_end = event_end
         self.event_code = event_code
         self.event_password = event_password
+        self.event_parent_id = event_parent_id
 
 
 def init():
