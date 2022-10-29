@@ -379,6 +379,11 @@ def get_event_history_follow_up(update_obj: Update, context: CallbackContext):
         with con.cursor() as cur:
             cur.execute(
                 """
+                SET timezone TO 'Asia/Singapore'
+                """
+            )
+            cur.execute(
+                """
                 SELECT id
                   FROM events 
                  WHERE event_code = %s
