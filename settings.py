@@ -130,6 +130,7 @@ Here is a walkthrough of what each of the functions will do, and your level need
 /startevent: Starts an event (Member)
 /joinevent: Joins an event, started either by your group or parent group(s) (Member)
 /getevent: Gets details of a current event (Member) 
+/geteventhistory: Gets details of any past event that has ended (Admin)
 
 /feedback: Sends feedback to the developers (None) 
 

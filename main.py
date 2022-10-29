@@ -310,6 +310,13 @@ def main():
         },
         fallbacks=[]
     )
+    get_event_history_handler = ConversationHandler(
+        entry_points=[CommandHandler('geteventhistory', get_event_history)],
+        states={
+            settings.FIRST: [MessageHandler(Filters.text, get_event_history_follow_up)]
+        },
+        fallbacks=[]
+    )
 
 
     # Developer functions and others
@@ -395,7 +402,7 @@ def main():
                     change_today_attendance_handler, change_tomorrow_attendance_handler,
                     change_any_day_attendance_handler,
 
-                    start_event_handler, join_event_handler, get_event_handler,
+                    start_event_handler, join_event_handler, get_event_handler, get_event_history_handler,
 
                     feedback_handler,
 

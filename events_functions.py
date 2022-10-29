@@ -5,8 +5,9 @@ from telegram.ext import CallbackContext, ConversationHandler
 import settings
 from backend_implementations import get_admin_reply, verify_group_and_role, get_event_id_from_button, \
     check_valid_time, check_valid_date, generate_random_group_code, get_all_child_and_subchild_groups, \
-    update_admin_movements, get_intended_users, convert_rank_to_id, get_group_events_backend
-from keyboards import events_keyboards, ReplyKeyboardRemove
+    update_admin_movements, get_intended_users, convert_rank_to_id, get_group_events_backend, \
+    get_datetime_from_time_string
+from keyboards import events_keyboards, all_past_events_keyboards, ReplyKeyboardRemove
 from data import DATABASE_URL
 import datetime
 
@@ -347,7 +348,53 @@ def get_event(update_obj: Update, context: CallbackContext):
 
 # Gets history of all events
 def get_event_history(update_obj: Update, context: CallbackContext):
-    pass
+
+    # Need to be admin to get history of all events
+    if not verify_group_and_role(update_obj, context, settings.ADMIN):
+        return ConversationHandler.END
+
+    chat_id = update_obj.message.chat_id
+    current_group = settings.current_group_id[chat_id]
+
+    update_obj.message.reply_text("Which event's information do you want to get? (Type OK to cancel)",
+                                  reply_markup=all_past_events_keyboards(group_id=current_group, extra_options=['OK']))
+    return settings.FIRST
+
+
+def get_event_history_follow_up(update_obj: Update, context: CallbackContext):
+    chat_id, message = get_admin_reply(update_obj, context)
+    if message.strip().lower() == 'ok':
+        update_obj.message.reply_text("Ok, exiting now", reply_markup=ReplyKeyboardRemove())
+        return ConversationHandler.END
+
+    event_name, event_datetime, event_code = message.split()
+    event_code = event_code[1:len(event_code) - 1]
+    event_datetime = get_datetime_from_time_string(event_datetime)
+
+    current_group = settings.current_group_id[chat_id]
+
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
+        with con.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id
+                  FROM events 
+                 WHERE event_code = %s
+                   AND DateEnd = %s
+                """, (event_code, event_datetime)
+            )
+            data = cur.fetchall()
+            if not data:
+                update_obj.message.reply_text("Unable to find the event, sorry!")
+                return ConversationHandler.END
+
+            event_id = data[0][0]
+
+    get_group_events_backend(update_obj, context, event_id=event_id, group_id=current_group)
+    update_admin_movements(chat_id, group_id=current_group, function='/geteventhistory', admin_text=event_name)
+    update_obj.message.reply_text("Data about event retrieved", reply_markup=ReplyKeyboardRemove())
+    return ConversationHandler.END
+
 
 """Future implementations: 
 /selectallofevent : Shows all of that event (idk)  
