@@ -973,8 +973,10 @@ def get_all_child_and_subchild_groups(group_id, groups=None):
     if groups is None:
         groups = []
     group_ids = get_child_groups(group_id)
+    print(group_ids)
     for group in group_ids:
         groups.append(group)
+        print("Appending:", group)
         get_all_child_and_subchild_groups(group_id, groups=groups)
 
     print(groups)
