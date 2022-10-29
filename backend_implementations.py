@@ -1135,6 +1135,11 @@ def get_all_past_group_events_with_timestamp(group_id):
         with con.cursor() as cur:
             cur.execute(
                 """
+                SET timezone TO 'Asia/Singapore'
+                """
+            )
+            cur.execute(
+                """
                 SELECT event_name, event_code, DateEnd 
                 FROM events 
                 WHERE group_id = %s 
