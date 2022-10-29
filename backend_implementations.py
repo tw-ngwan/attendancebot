@@ -1080,6 +1080,7 @@ def get_group_events_backend_recursive(event_id: int, group_id: int, num_members
 
     # Now, we repeat for all child groups
     for id_val in group_ids:
+        event_message_body.append(f"*{get_group_name_from_id(id_val)}*")
         event_message_body, num_members = get_group_events_backend_recursive(event_id, id_val, num_members,
                                                                              event_message_body)
 
@@ -1117,5 +1118,32 @@ def get_group_events_backend_backend(event_id: int, group_id: int, num_members: 
     return current_message, num_members
 
 
+# Returns string representation of time
 def get_time_string_from_datetime(d: datetime.datetime) -> str:
     return f"{d.day:02d}{d.month:02d}{str(d.year)[2:]} {d.hour:02d}:{d.minute:02d}:{d.second:02d}"
+
+
+# Gets all past group events that have happpened
+def get_all_past_group_events_with_timestamp(group_id):
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
+        with con.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, event_name, event_code, DateEnd 
+                FROM events 
+                WHERE group_id = %s 
+                """, (group_id, )
+            )
+            events = cur.fetchall()
+    return events
+
+
+# Gets group name from id
+def get_group_name_from_id(group_id):
+    with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
+        with con.cursor() as cur:
+            cur.execute(
+                """SELECT Name FROM groups WHERE id = %s""", (group_id, )
+            )
+            group_name = cur.fetchall()[0][0]
+    return group_name
