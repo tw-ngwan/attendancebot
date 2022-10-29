@@ -216,6 +216,8 @@ def join_event_get_password(update_obj: Update, context: CallbackContext):
         update_obj.message.reply_text("Invalid event, please try again!", reply_markup=ReplyKeyboardRemove())
         return ConversationHandler.END
 
+    current_group = settings.current_group_id[chat_id]
+
     # Get the event_id
     with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
@@ -224,9 +226,10 @@ def join_event_get_password(update_obj: Update, context: CallbackContext):
                 SELECT id, password
                   FROM events 
                  WHERE parent_id = %s
+                   AND group_id = %s
                  ORDER BY id DESC 
                  LIMIT 1
-                 """, (event_parent_id, )
+                 """, (event_parent_id, current_group)
             )
             event_details = cur.fetchall()
             if not event_details:
