@@ -1109,7 +1109,7 @@ def get_group_events_backend_backend(event_id: int, group_id: int, num_members: 
             )
             data = cur.fetchall()
             if not data:
-                return []
+                return [], num_members
     current_message = []
     for val in data:
         num_members += 1

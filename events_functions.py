@@ -344,6 +344,11 @@ def get_event(update_obj: Update, context: CallbackContext):
     update_obj.message.reply_text("Data about event retrieved", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
+
+# Gets history of all events
+def get_event_history(update_obj: Update, context: CallbackContext):
+    pass
+
 """Future implementations: 
 /selectallofevent : Shows all of that event (idk)  
 /eventhistory: Shows a list of all events in the past.
