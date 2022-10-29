@@ -367,7 +367,9 @@ def get_event_history_follow_up(update_obj: Update, context: CallbackContext):
         update_obj.message.reply_text("Ok, exiting now", reply_markup=ReplyKeyboardRemove())
         return ConversationHandler.END
 
-    event_name, event_datetime, event_code = message.split()
+    event_data = message.split()
+    event_code = event_data[-1]
+    event_datetime = event_data[-2]
     event_code = event_code[1:len(event_code) - 1]
     event_datetime = get_datetime_from_time_string(event_datetime)
 
@@ -391,7 +393,7 @@ def get_event_history_follow_up(update_obj: Update, context: CallbackContext):
             event_id = data[0][0]
 
     get_group_events_backend(update_obj, context, event_id=event_id, group_id=current_group)
-    update_admin_movements(chat_id, group_id=current_group, function='/geteventhistory', admin_text=event_name)
+    update_admin_movements(chat_id, group_id=current_group, function='/geteventhistory', admin_text=message)
     update_obj.message.reply_text("Data about event retrieved", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
