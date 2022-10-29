@@ -1058,7 +1058,8 @@ def get_group_events_backend(update_obj: Update, context: CallbackContext, event
 
             event_name, event_start, event_end = event_info[0]
 
-    event_message_beginning = [f"*Participants in {event_name} from {event_start} to {event_end}:*", ""]
+    event_message_beginning = [f"*Participants in {event_name} from {get_time_string_from_datetime(event_start)} to "
+                               f"{get_time_string_from_datetime(event_end)}:*", ""]
     event_message_body, num_members = get_group_events_backend_recursive(event_id, group_id,
                                                                          num_members=0, event_message_body=[])
     event_message_summary = [f"Total participants: {num_members}", ""]
@@ -1110,5 +1111,9 @@ def get_group_events_backend_backend(event_id: int, group_id: int, num_members: 
     current_message = []
     for val in data:
         num_members += 1
-        current_message.append(f"{num_members}) {val[0]} - {val[1]}")
+        current_message.append(f"{num_members}) {val[0]} - {get_time_string_from_datetime(val[1])}")
     return current_message, num_members
+
+
+def get_time_string_from_datetime(d: datetime.datetime) -> str:
+    return f"{d.day}{d.month}{d.year[2:]} {d.hour}:{d.minute}:{d.second}"
