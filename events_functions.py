@@ -89,7 +89,7 @@ def start_event_get_end_time(update_obj: Update, context: CallbackContext):
             return ConversationHandler.END
 
     # Timezone specified to SG Time
-    event_end_time = datetime.datetime.combine(date, timing, tzinfo=datetime.timezone(datetime.timedelta(hours=8)))
+    event_end_time = datetime.datetime.combine(date, timing)
     now = datetime.datetime.now()
     if event_end_time < now:
         update_obj.message.reply_text("Event end time has to be after current time!")
