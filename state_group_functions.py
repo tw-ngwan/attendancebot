@@ -392,6 +392,11 @@ def merge_groups_follow_up(update_obj: Update, context: CallbackContext) -> int:
         # Get all child groups. Ok one problem: Make sure that the parent group is not in the child_groups
         # One more problem: Make sure one of the child groups is not the parent of the parent group
         all_groups = list(merge_group_storage.child_groups)
+        if not all_groups:
+            update_admin_movements(chat_id, group_id=parent_id, function='/mergegroups', admin_text=str(all_groups))
+
+            context.bot.send_message(chat_id, "All groups have been merged", reply_markup=ReplyKeyboardRemove())
+            return ConversationHandler.END
 
         # Update the sqlite database to reflect that the groups are merged
         with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
