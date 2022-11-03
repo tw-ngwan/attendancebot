@@ -96,7 +96,7 @@ def enter_group_follow_up(update_obj: Update, context: CallbackContext) -> Conve
 
     settings.current_group_id[chat_id] = group_id
     settings.current_group_name[chat_id] = group_name
-    print(settings.current_group_id[chat_id])
+    print("From /enter (1):", settings.current_group_id[chat_id])
 
     context.bot.send_message(chat_id, f"Ok, you have entered {group_name}", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END

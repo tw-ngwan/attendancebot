@@ -20,6 +20,7 @@ def get_today_group_attendance(update_obj: Update, context: CallbackContext) -> 
     # Get the whole group's id
     chat_id = update_obj.message.chat_id
     current_group = settings.current_group_id[chat_id]
+    print("From /get:", current_group)
     today = datetime.date.today()
     # Ensures that the day that is gotten is a weekday
     while today.weekday() > 4:

@@ -84,7 +84,7 @@ def verify_group_and_role(update_obj: Update, context: CallbackContext, role: st
     # print("Verification starting")
     chat_id = update_obj.message.chat_id
     current_group_id = settings.current_group_id[chat_id]
-    print(current_group_id)
+    print("From verify:", current_group_id)
     role_index_dict = {settings.ADMIN: 0, settings.MEMBER: 1, settings.OBSERVER: 2, "Other": 3}
     # Verify that the user is in a group first
     if current_group_id is None:
@@ -113,7 +113,7 @@ def verify_group_and_role(update_obj: Update, context: CallbackContext, role: st
 def check_admin_privileges(chat_id, group_id):
     """Checks if a user is an admin, member, observer, or None.
     If admin, returns 0. If member, returns 1. If observer, returns 2. If none, returns 3"""
-    print(group_id)
+    print("From check:", group_id)
     with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
             cur.execute(
