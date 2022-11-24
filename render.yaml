@@ -8,6 +8,8 @@ services:
     branch: main # optional (defaults to master)
     healthCheckPath: /
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.9.2
       - key: API_KEY_TELEGRAM
         value: 5323812726:AAHIW4bbdv7gNe2H_M15dU7-xDzbVkqQWaE
       - key: DEVELOPER_PASSWORD
