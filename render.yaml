@@ -1,0 +1,39 @@
+services:
+  - type: worker
+    name: attendance-6amb-bot
+    env: python
+    repo: https://github.com/tw-ngwan/attendancebot.git # optional
+    region: singapore # optional (defaults to oregon)
+    plan: free # optional (defaults to starter)
+    branch: main # optional (defaults to master)
+    healthCheckPath: /
+    envVars:
+      - key: API_KEY_TELEGRAM
+        value: 5323812726:AAHIW4bbdv7gNe2H_M15dU7-xDzbVkqQWaE
+      - key: DEVELOPER_PASSWORD
+        value: A Mathematical Adventure with Chemistry
+      - key: TZ
+        value: Asia/Singapore
+      - key: DATABASE_URL
+        fromDatabase: 
+          name: attendance 
+          property: connectionString
+
+databases:
+  - name: attendance
+    user: attendance_7fq7_user 
+
+
+envVarGroups:
+  - name: conc-settings
+    envVars:
+      - key: API_KEY_TELEGRAM
+        value: 5323812726:AAHIW4bbdv7gNe2H_M15dU7-xDzbVkqQWaE
+      - key: DEVELOPER_PASSWORD
+        value: A Mathematical Adventure with Chemistry
+      - key: TZ
+        value: Asia/Singapore
+      - key: DATABASE_URL
+        fromDatabase: 
+          name: attendance 
+          property: connectionString
