@@ -44,21 +44,22 @@ def start(update_obj: Update, context: CallbackContext) -> ConversationHandler.E
                                   "/creategroup, or join a group with /joingroup! "
                                   )
 
+    # Because Render is unable to handle this apparently
     # Sets the timezone
-    SGT = tz.gettz('Asia/Singapore')
-    Defaults.tzinfo = SGT
-
-    # This NEEDS to be updated. You need to check what groups user is in, then run this
-    # Also you need a setting to see if the user wants to be active or not
-    # Starts running the repeated functions daily:
-    # Sends today's attendance at 6am, tomorrow's attendance at 2pm and 9pm
-    context.job_queue.run_daily(get_today_attendance, time=datetime.time(hour=6, minute=0, tzinfo=SGT),
-                                context=update_obj.message.chat_id)
-    context.job_queue.run_daily(get_tomorrow_attendance, time=datetime.time(hour=14, minute=0, tzinfo=SGT),
-                                context=update_obj.message.chat_id)
-    context.job_queue.run_daily(get_tomorrow_attendance, time=datetime.time(hour=21, minute=0, tzinfo=SGT),
-                                context=update_obj.message.chat_id)
-    # context.job_queue.run_repeating(get_today_attendance, interval=10, first=10, context=update_obj.message.chat_id)
+    # SGT = tz.gettz('Asia/Singapore')
+    # Defaults.tzinfo = SGT
+    #
+    # # This NEEDS to be updated. You need to check what groups user is in, then run this
+    # # Also you need a setting to see if the user wants to be active or not
+    # # Starts running the repeated functions daily:
+    # # Sends today's attendance at 6am, tomorrow's attendance at 2pm and 9pm
+    # context.job_queue.run_daily(get_today_attendance, time=datetime.time(hour=6, minute=0, tzinfo=SGT),
+    #                             context=update_obj.message.chat_id)
+    # context.job_queue.run_daily(get_tomorrow_attendance, time=datetime.time(hour=14, minute=0, tzinfo=SGT),
+    #                             context=update_obj.message.chat_id)
+    # context.job_queue.run_daily(get_tomorrow_attendance, time=datetime.time(hour=21, minute=0, tzinfo=SGT),
+    #                             context=update_obj.message.chat_id)
+    # # context.job_queue.run_repeating(get_today_attendance, interval=10, first=10, context=update_obj.message.chat_id)
 
     return ConversationHandler.END
 
