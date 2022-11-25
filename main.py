@@ -317,6 +317,11 @@ def main():
         },
         fallbacks=[]
     )
+    event_help_handler = ConversationHandler(
+        entry_points=[CommandHandler('eventhelp', event_help)],
+        states={},
+        fallbacks=[]
+    )
 
 
     # Developer functions and others
@@ -403,6 +408,7 @@ def main():
                     change_any_day_attendance_handler,
 
                     start_event_handler, join_event_handler, get_event_handler, get_event_history_handler,
+                    event_help_handler,
 
                     feedback_handler,
 

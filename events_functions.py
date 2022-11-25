@@ -12,6 +12,26 @@ from data import DATABASE_URL
 import datetime
 
 
+# Gets tutorial about events and what each of the functions entail
+def event_help(update_obj: Update, context: CallbackContext):
+    """Gives help on what events are and how to use them"""
+    help_string = "Events are fixed-time activities that can be participated in by people of multiple groups. " \
+                  "To start an event, use /startevent, and define the end-time of the event. Consequently, before " \
+                  "the end of the event, anyone from the group, or any of the child groups of the group, can join " \
+                  "the event, and their participation, as well as time joined, will be recorded. Joining an event " \
+                  "can be done with /joinevent (not to be confused with /startevent!)\n\n" \
+                  "To get information on an event that's currently happening, you can use /getevent. It will show " \
+                  "the names of every currently participating member in the group you are in (and all its child " \
+                  "groups). To get the history of all past events, you can use /geteventhistory. \n\n" \
+                  "For example, if a battalion with four companies wants to start an event (HLS, for eg), inside the " \
+                  "battalion group, an Admin can run /startevent. Subsequently, members in each of the company " \
+                  "groups can use /joinevent to join the event started by the battalion group. Using /getevent in " \
+                  "each of the company groups will show the company's event attendance, while using /getevent in " \
+                  "the battalion group will show all 4 company groups' event attendance. "
+    update_obj.message.reply_text(help_string)
+    return ConversationHandler.END
+
+
 # Tracks the start of an event
 def start_event(update_obj: Update, context: CallbackContext):
 
