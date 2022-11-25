@@ -5,6 +5,8 @@ This attendance bot tracks attendance of groups, of which each group contains me
 
 People using the bot can either create a group, or join the necessary group that has already been created (using a group code and password). To call a function on a group, they must use /enter to enter the group first. Users in any group will get a message at various times of the day pinging them about the day's attendance. 
 
+Edit as of 28 Oct 2022: The bot can now be used to keep track of events, through our event tracking mechanism
+
 Technical implementation of the bot:
 Data is stored in SQLite in 4 tables: Groups, Users, Attendance, and Admins. Groups stores the groups that are created, Users stores all the names of all the people in each group, Attendance stores the daily attendance of each user, and Admins stores the chat_ids and data of all the people who use the bot (regardless of their tier). Whenever users call a function to change the attendance or get the attendance, the relevant attendance status is stored in the Attendance Table of SQLite, so that it can be called back when needed. Similarly, whenever groups / users are added or deleted, the relevant tables are called. When the attendance of a group is called, it will call recursively for the attendance of all subgroups as well. However, if you want to change the attendance of a subgroup of a group, you need to enter that group first.
 
