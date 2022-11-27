@@ -342,6 +342,7 @@ def get_group_attendance_backend(group_id: int, date: datetime.date = None):
 
     # Get the number of days to add; this is so that we can get the correct date for SQLite
     today = datetime.date.today()
+    print(today)
     num_days_to_add = (date - today).days
 
     # # This is the date_message that will be passed to sqlite when checking which date will be used
