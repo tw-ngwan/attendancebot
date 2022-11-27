@@ -30,6 +30,12 @@ def create_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
             group_code = generate_random_group_code()
             observer_password, member_password, admin_password = generate_random_password(iterations=3)
             # Stores the group in SQLite. current_group can be None
+            # Makes the timezone correct first
+            cur.execute(
+                """
+                SET timezone TO 'Asia/Singapore'
+                """
+            )
             cur.execute(
                 """
                 INSERT INTO groups (
@@ -184,6 +190,12 @@ def join_group_follow_up(update_obj: Update, context: CallbackContext) -> int:
     # Adds the admin into the group
     with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
+            # Makes the timezone correct first
+            cur.execute(
+                """
+                SET timezone TO 'Asia/Singapore'
+                """
+            )
             cur.execute(
                 """
                 INSERT INTO admins

@@ -195,6 +195,12 @@ def get_group_history(update_obj: Update, context: CallbackContext):
     # Accesses the table to print out history
     with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
+            # Makes the timezone correct first
+            cur.execute(
+                """
+                SET timezone TO 'Asia/Singapore'
+                """
+            )
             cur.execute(
                 """
                 SELECT admins.username, admin_movements.DateTime, admin_movements.function, admin_movements.admin_text

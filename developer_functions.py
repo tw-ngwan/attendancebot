@@ -141,6 +141,12 @@ def developer_sql_console_follow_up(update_obj: Update, context: CallbackContext
     with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
             try:
+                # Makes the timezone correct first
+                cur.execute(
+                    """
+                    SET timezone TO 'Asia/Singapore'
+                    """
+                )
                 cur.execute(message)
                 reply_details = cur.fetchall()
                 reply_details_string = str(reply_details)

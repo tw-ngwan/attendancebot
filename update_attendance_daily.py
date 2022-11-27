@@ -24,6 +24,12 @@ def update_attendance():
     # First, we find all the groups that need attendance updated
     with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
+            # Makes the timezone correct first
+            cur.execute(
+                """
+                SET timezone TO 'Asia/Singapore'
+                """
+            )
             cur.execute(
                 """
                 SELECT groups.id, groups.NumDailyReports, users.id

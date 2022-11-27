@@ -187,6 +187,12 @@ def update_admin_movements(chat_id: int, group_id: int, function: str, admin_tex
     admin_id = get_admin_id(chat_id, group_id)
     with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
+            # Makes the timezone correct first
+            cur.execute(
+                """
+                SET timezone TO 'Asia/Singapore'
+                """
+            )
             cur.execute(
                 """
                 INSERT INTO admin_movements 
@@ -342,7 +348,7 @@ def get_group_attendance_backend(group_id: int, date: datetime.date = None):
 
     # Get the number of days to add; this is so that we can get the correct date for SQLite
     today = datetime.date.today()
-    print(today)
+    # print(today)
     num_days_to_add = (date - today).days
 
     # # This is the date_message that will be passed to sqlite when checking which date will be used
@@ -352,6 +358,12 @@ def get_group_attendance_backend(group_id: int, date: datetime.date = None):
     with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
 
+            # Makes the timezone correct first
+            cur.execute(
+                """
+                SET timezone TO 'Asia/Singapore'
+                """
+            )
             # Gets the attendance of the non-present people for the day
             cur.execute(
                 """
@@ -599,6 +611,12 @@ def change_group_attendance_backend(update_obj: Update, context: CallbackContext
         # Update the attendance of the user
         with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
             with con.cursor() as cur:
+                # Makes the timezone correct first
+                cur.execute(
+                    """
+                    SET timezone TO 'Asia/Singapore'
+                    """
+                )
                 # Gets the values of all
                 status = [value.strip().upper() for value in status.split('/')]
 
@@ -653,6 +671,12 @@ def get_single_user_attendance_backend(group_id: int, user_id: int, start_date: 
 
     with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
+            # Makes the timezone correct first
+            cur.execute(
+                """
+                SET timezone TO 'Asia/Singapore'
+                """
+            )
             cur.execute(
                 """
                 SELECT TimePeriod, Date, AttendanceStatus
@@ -1027,6 +1051,12 @@ def get_past_group_events(group_id):
 def get_current_group_events(group_id):
     with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
+            # Makes the timezone correct first
+            cur.execute(
+                """
+                SET timezone TO 'Asia/Singapore'
+                """
+            )
             cur.execute(
                 """
                 SELECT DISTINCT event_name, event_code 

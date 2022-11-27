@@ -25,7 +25,12 @@ def add_user_follow_up(update_obj: Update, context: CallbackContext) -> int:
         with con.cursor() as cur:
             # Find current number of users, so that the group rank can be increased
             group_size = get_group_size(current_group)
-
+            # Makes the timezone correct first
+            cur.execute(
+                """
+                SET timezone TO 'Asia/Singapore'
+                """
+            )
             # Adds user
             cur.execute(
                 """INSERT INTO users
@@ -295,6 +300,12 @@ def change_user_group_follow_up(update_obj: Update, context: CallbackContext) ->
     # Finally, we change the ranks of the initial group to make it correct once again
     with psycopg2.connect(DATABASE_URL, sslmode='require') as con:
         with con.cursor() as cur:
+            # Makes the timezone correct first
+            cur.execute(
+                """
+                SET timezone TO 'Asia/Singapore'
+                """
+            )
 
             # Get the group sizes
             final_group_size = get_group_size(final_group)
