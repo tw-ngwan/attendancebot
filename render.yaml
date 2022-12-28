@@ -10,10 +10,6 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.9.2
-      - key: API_KEY_TELEGRAM
-        value: 5323812726:AAHIW4bbdv7gNe2H_M15dU7-xDzbVkqQWaE
-      - key: DEVELOPER_PASSWORD
-        value: A Mathematical Adventure with Chemistry
       - key: TZ
         value: Asia/Singapore
       - key: DATABASE_URL
@@ -29,10 +25,6 @@ databases:
 envVarGroups:
   - name: conc-settings
     envVars:
-      - key: API_KEY_TELEGRAM
-        value: 5323812726:AAHIW4bbdv7gNe2H_M15dU7-xDzbVkqQWaE
-      - key: DEVELOPER_PASSWORD
-        value: A Mathematical Adventure with Chemistry
       - key: TZ
         value: Asia/Singapore
       - key: DATABASE_URL
